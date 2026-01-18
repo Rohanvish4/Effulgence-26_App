@@ -1,0 +1,242 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
+import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
+import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
+import 'package:flutter/material.dart';
+
+class EventCard extends StatelessWidget {
+  final String title;
+  final String domain;
+  final String? imageUrl;
+  final String venue;
+  final DateTime dateTime;
+  final String status;
+  final VoidCallback? onTap;
+  final Color? accentColor;
+  final bool showRegisterButton;
+  final bool isRegistered;
+  final bool isRegistering;
+  final String? eventType; // 'INDIVIDUAL' or 'TEAM'
+  final VoidCallback? onRegister;
+
+  const EventCard({
+    super.key,
+    required this.title,
+    required this.domain,
+    this.imageUrl,
+    required this.venue,
+    required this.dateTime,
+    required this.status,
+    this.onTap,
+    this.accentColor,
+    this.showRegisterButton = false,
+    this.isRegistered = false,
+    this.isRegistering = false,
+    this.eventType,
+    this.onRegister,
+  });
+
+  Color get _accentColor => accentColor ?? _getDomainColor(domain);
+
+  Color _getDomainColor(String domain) {
+    switch (domain.toLowerCase()) {
+      case 'coding':
+      case 'software':
+        return AppColors.electricBlue;
+      case 'robotics':
+      case 'hardware':
+        return AppColors.crimsonRed;
+      case 'core':
+      case 'engineering':
+        return AppColors.royalPurple;
+      case 'workshop':
+        return AppColors.innovationGreen;
+      default:
+        return AppColors.cyanTeal;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppColors.cardElevation(),
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // LEFT ACCENT STRIP — FIXED HEIGHT
+              Container(
+                width: AppSpacing.accentStripThick,
+                height: 220, // ✅ FIXED HEIGHT
+                decoration: BoxDecoration(
+                  color: _accentColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppSpacing.radiusLg),
+                    bottomLeft: Radius.circular(AppSpacing.radiusLg),
+                  ),
+                ),
+              ),
+
+              // CONTENT — EXPANDED TO FILL REMAINING SPACE
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildImage(),
+
+                    Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title.toUpperCase(),
+                            style: AppTextStyles.titleMedium.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+
+                          _buildInfoRow(Icons.location_on_outlined, venue),
+                          const SizedBox(height: AppSpacing.xs),
+                          _buildInfoRow(
+                            Icons.schedule,
+                            _formatDateTime(dateTime),
+                          ),
+
+                          if (showRegisterButton) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            _buildRegisterButton(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    final height = AppSpacing.cardImageHeight;
+
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl!,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => _imageFallback(height),
+        placeholder: (_, __) => _imageFallback(height),
+      );
+    }
+    return _imageFallback(height);
+  }
+
+  Widget _imageFallback(double height) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      color: AppColors.surface,
+      child: Icon(
+        Icons.event,
+        size: 48,
+        color: _accentColor.withValues(alpha: 0.4),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: AppSpacing.iconSm, color: _accentColor),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            text,
+            style: AppTextStyles.bodySmall,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRegisterButton() {
+    // If already registered, show registered state
+    if (isRegistered) {
+      return SizedBox(
+        width: double.infinity,
+        height: 36,
+        child: ElevatedButton(
+          onPressed: null, // Disabled
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.success,
+            foregroundColor: Colors.white,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check, size: 16),
+              const SizedBox(width: AppSpacing.xs),
+              const Text('REGISTERED'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Get button text based on event type
+    final buttonText = eventType == 'TEAM' ? 'CREATE TEAM' : 'REGISTER';
+
+    return SizedBox(
+      width: double.infinity,
+      height: 36,
+      child: ElevatedButton(
+        onPressed: isRegistering ? null : onRegister,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _accentColor,
+          foregroundColor: Colors.black,
+        ),
+        child: isRegistering
+            ? const SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(buttonText),
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime dt) {
+    const months = [
+      'Jan','Feb','Mar','Apr','May','Jun',
+      'Jul','Aug','Sep','Oct','Nov','Dec'
+    ];
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    final period = dt.hour >= 12 ? 'PM' : 'AM';
+    return '${dt.day} ${months[dt.month - 1]}, '
+        '${hour.toString().padLeft(2, '0')}:'
+        '${dt.minute.toString().padLeft(2, '0')} $period';
+  }
+}

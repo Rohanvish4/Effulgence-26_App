@@ -1,0 +1,71 @@
+/// API Constants for Effulgence'26 App
+class ApiConstants {
+  ApiConstants._();
+
+  // Base URL - Change this based on environment
+  static const String baseUrl = 'https://api.effulgence26.live/';
+
+  // API Endpoints
+  static const String health = '/health';
+
+  // Auth Endpoints
+  static const String signup = '/user/signup';
+  static const String verifyOtp = '/user/verify-otp';
+  static const String resendOtp = '/user/resend-otp';
+
+  static const String login = '/user/login';
+  static const String logout = '/user/logout';
+
+  // Profile Endpoints
+  static const String profile = '/user/profile';
+  static const String profileEdit = '/user/profile/edit';
+
+  // Events Endpoints
+  // GET /events - Get all events (public)
+  static const String events = '/events';
+
+  // POST /events/create - Create new event (admin only)
+  static const String createEvent = '/events/create';
+
+  // PATCH /events/{eventId}/edit - Update event (admin only)
+  static const String editEvent = '/events/'; // + eventId + '/edit'
+
+  // PATCH /events/{eventId}/delete - Soft delete event (admin only)
+  static const String deleteEvent = '/events/'; // + eventId + '/delete'
+
+  // PATCH /events/{eventId}/restore-event - Restore deleted event (admin only)
+  static const String restoreEvent = '/events/'; // + eventId + '/restore-event'
+
+  // GET /events/{eventId} - Get event details (public)
+  static const String eventDetails = '/events/'; // + eventId
+
+  // POST /events/register - Register for event (authenticated users)
+  static const String registerEvent = '/events/register';
+
+  // GET /events/registrations/{eventId} - Get event registrations (admin/member)
+  static const String eventRegistrations =
+      '/events/registrations/'; // + eventId
+
+  // POST /events/{eventId}/create-team - Create team for team event (users)
+  static const String createTeam = '/events/'; // + eventId + '/create-team'
+
+  // GET /events/{eventId}/get-public-teams - Get public teams (public)
+  static const String getPublicTeams =
+      '/events/'; // + eventId + '/get-public-teams'
+
+  // Domains Endpoints
+  static const String domains = '/domains';
+  static const String domainDetails = '/domains/'; // + domainId
+
+  // Users Endpoints (Admin)
+  static const String users = '/users';
+  static const String externalUsers = '/user/users/external';
+  static const String updateRole = '/user/update-role';
+  static const String approveStatus = '/user/approveStatus';
+  static const String userRegisteredEvents =
+      '/user/'; // + userId + '/registered-events'
+
+  // Timeouts
+  static const Duration connectionTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+}
