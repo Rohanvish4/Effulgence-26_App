@@ -1,6 +1,7 @@
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
+import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../core/theme/app_colors.dart';
@@ -22,8 +23,8 @@ class _HometabState extends State<Hometab> {
     const HomePage(),
     const EventsListPage(),
     const Center(child: Text('Schedule - Coming Soon')),
-    const Center(child: Text('Profile - Coming Soon')),
-    // const AdminEventsPage() 
+    const UserProfilePage(),
+    // const AdminEventsPage()
   ];
 
   @override
