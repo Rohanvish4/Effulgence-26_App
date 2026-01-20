@@ -18,6 +18,10 @@ import '../../features/event/data/datasources/events_remote_datasource.dart';
 import '../../features/event/data/repositories/events_repository_impl.dart';
 import '../../features/event/presentation/cubit/events_cubit.dart';
 
+import '../../features/profile/data/datasources/user_profile_remote_datasource.dart';
+import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
+
 /// App-wide providers and dependency injection
 class AppProviders {
   static Future<List<SingleChildWidget>> getProviders() async {
@@ -85,6 +89,24 @@ class AppProviders {
     final eventsCubit = EventsCubit(eventsRepository: eventsRepository);
 
     // =========================================================================
+    // PROFILE FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+
+    // DATA LAYER: Remote Data Source
+    final profileRemoteDataSource = ProfileRemoteDataSourceImpl(
+      apiClient: apiClient,
+    );
+
+    // DATA LAYER: Repository Implementation
+    final profileRepository = UserProfileRepositoryImpl(
+      remoteDataSource: profileRemoteDataSource,
+      networkInfo: networkInfo,
+    );
+
+    // PRESENTATION LAYER: Cubit
+    final profileCubit = ProfileCubit(profileRepository: profileRepository);
+
+    // =========================================================================
     // PROVIDER REGISTRATION (Dependency Injection Container)
     // =========================================================================
 
@@ -93,12 +115,15 @@ class AppProviders {
       // REPOSITORIES (Domain Layer Interfaces - Business Logics)
       // =========================================================================
       Provider<AuthRepositoryImpl>.value(value: authRepository),
+      // Provider<EventsRepositoryImpl>.value(value: eventsRepository),
+      Provider<UserProfileRepositoryImpl>.value(value: profileRepository),
 
       // =========================================================================
       // CUBITS (Presentation Layer - State Management)
       // =========================================================================
       BlocProvider<AuthCubit>.value(value: authCubit),
       BlocProvider<EventsCubit>.value(value: eventsCubit),
+      BlocProvider<ProfileCubit>.value(value: profileCubit),
 
       // =========================================================================
       // FUTURE FEATURES: Add more providers here as needed
