@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/entities/participation_entity.dart';
+import 'package:effulgence26_mobile_app/features/event/domain/entities/public_team_entity.dart';
 import '../../../../core/errors/failures.dart';
 import '../entities/event_entity.dart';
 import '../entities/event_params.dart';
@@ -29,6 +30,14 @@ abstract class EventsRepository {
   // USER operations
   Future<Either<Failure, void>> createTeam(CreateTeamParams params);
   Future<Either<Failure, List<ParticipationEntity>>> getMyParticipations();
+
+  /// Get public teams for a team event
+  Future<Either<Failure, List<PublicTeamEntity>>> getPublicTeams(
+    String eventId,
+  );
+
+  /// Join an existing team
+  Future<Either<Failure, void>> joinTeam(String eventId, String teamId);
 
   // ADMIN/SUPER_ADMIN operations
   Future<Either<Failure, EventEntity>> createEvent(CreateEventParams params);

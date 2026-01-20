@@ -5,6 +5,7 @@ import '../../../../core/network/network_info.dart';
 import '../../domain/entities/event_entity.dart';
 import '../../domain/entities/event_params.dart';
 import '../../domain/entities/participation_entity.dart';
+import '../../domain/entities/public_team_entity.dart';
 import '../../domain/repositories/events_repository.dart';
 import '../datasources/events_remote_datasource.dart';
 
@@ -142,7 +143,11 @@ class EventsRepositoryImpl implements EventsRepository {
     }
 
     try {
-      await remoteDataSource.createTeam(params.eventId, params.teamName);
+      await remoteDataSource.createTeam(
+        params.eventId,
+        params.teamName,
+        params.isPublic,
+      );
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
@@ -161,6 +166,40 @@ class EventsRepositoryImpl implements EventsRepository {
     try {
       final participations = await remoteDataSource.getMyParticipations();
       return Right(participations);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<PublicTeamEntity>>> getPublicTeams(
+    String eventId,
+  ) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      final teams = await remoteDataSource.getPublicTeams(eventId);
+      return Right(teams);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> joinTeam(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.joinTeam(eventId, teamId);
+      return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
     } catch (e) {

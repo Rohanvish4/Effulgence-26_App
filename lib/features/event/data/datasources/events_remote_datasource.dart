@@ -3,6 +3,7 @@ import '../../../../core/network/api_client.dart';
 import '../../domain/entities/event_params.dart';
 import '../models/event_model.dart';
 import '../models/participation_model.dart';
+import '../models/public_team_model.dart';
 
 import '../../../auth/data/datasources/auth_local_datasource.dart';
 
@@ -19,8 +20,14 @@ abstract class EventsRemoteDataSource {
   Future<List<EventModel>> searchEvents(String query);
 
   // USER OPERATIONS (Authenticated users)
-  Future<void> createTeam(String eventId, String teamName);
+  Future<void> createTeam(String eventId, String teamName, bool isPublic);
   Future<List<ParticipationModel>> getMyParticipations();
+
+  /// Get public teams for a team event
+  Future<List<PublicTeamModel>> getPublicTeams(String eventId);
+
+  /// Join an existing team
+  Future<void> joinTeam(String eventId, String teamId);
 
   // ADMIN/SUPER_ADMIN OPERATIONS
   Future<EventModel> createEvent(CreateEventParams params);
@@ -101,10 +108,14 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
 
   // USER operations
   @override
-  Future<void> createTeam(String eventId, String teamName) async {
+  Future<void> createTeam(
+    String eventId,
+    String teamName,
+    bool isPublic,
+  ) async {
     await apiClient.post(
       '/events/$eventId/create-team',
-      data: {'teamName': teamName},
+      data: {'teamName': teamName, 'isPublic': isPublic},
     );
   }
 
@@ -119,6 +130,30 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     final response = await apiClient.get('/user/${user.id}/registered-events');
     final List<dynamic> data = response.data['data'] ?? response.data ?? [];
     return data.map((json) => ParticipationModel.fromJson(json)).toList();
+  }
+
+  // PUBLIC TEAM OPERATIONS
+  @override
+  Future<List<PublicTeamModel>> getPublicTeams(String eventId) async {
+    final response = await apiClient.get('/events/$eventId/get-public-teams');
+
+    // Handle two response formats:
+    // 1. When teams exist: {"message": [...]}
+    // 2. When no teams: {"message": "No teams found...", "data": []}
+    final messageData = response.data['message'];
+
+    if (messageData is List) {
+      // Teams exist - parse the list
+      return messageData.map((json) => PublicTeamModel.fromJson(json)).toList();
+    } else {
+      // No teams - return empty list
+      return [];
+    }
+  }
+
+  @override
+  Future<void> joinTeam(String eventId, String teamId) async {
+    await apiClient.post('/events/$eventId/team/$teamId');
   }
 
   // ADMIN/SUPER_ADMIN operations

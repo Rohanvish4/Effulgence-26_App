@@ -121,7 +121,7 @@ The API uses HTTP-only cookies for session management. After successful login/si
 
 **Notes**:
 - Users with KNIT email addresses (@knit.ac.in) are automatically approved and marked as internal users
-- Other users have pending approval status and need admin approval to get approved status badge.
+- Other users have pending approval status and need admin approval to access the system
 
 **Success Response** (200):
 ```json
@@ -340,7 +340,7 @@ The API uses HTTP-only cookies for session management. After successful login/si
 
 ### 8. Get All Users (Super Admin Only)
 
-**Endpoint**: `GET /users`
+**Endpoint**: `GET /user/users`
 
 **Authentication**: Required (SUPER_ADMIN role)
 
@@ -619,6 +619,164 @@ The API uses HTTP-only cookies for session management. After successful login/si
 - `400`: Invalid Event Id
 - `404`: Event not found
 - `500`: Failed to fetch event details
+
+---
+
+## Event Registration Flow Overview
+
+This section provides a comprehensive overview of how users can register for events in the Effulgence26 platform.
+
+### Event Types
+
+Events in Effulgence26 can be of two types:
+
+1. **INDIVIDUAL Events**: Users register individually
+2. **TEAM Events**: Users must be part of a team to participate
+
+### Registration Decision Flow
+
+```mermaid
+flowchart TD
+    Start([User Views Event]) --> CheckType{Event Type?}
+    
+    CheckType -->|INDIVIDUAL| IndivReg[Register Individually]
+    IndivReg --> IndivAPI[POST /events/register]
+    IndivAPI --> Success1([Registration Complete])
+    
+    CheckType -->|TEAM| TeamDecision{Want to create<br/>or join team?}
+    
+    TeamDecision -->|Create New Team| TeamType{Public or<br/>Private Team?}
+    TeamType -->|Public Team| CreatePublic[Create Public Team<br/>isPublic: true]
+    TeamType -->|Private Team| CreatePrivate[Create Private Team<br/>isPublic: false]
+    CreatePublic --> CreateAPI[POST /events/:eventId/create-team]
+    CreatePrivate --> CreateAPI
+    CreateAPI --> Success2([Team Created & Registered])
+    
+    TeamDecision -->|Join Existing| BrowseTeams[Browse Public Teams]
+    BrowseTeams --> GetTeamsAPI[GET /events/:eventId/get-public-teams]
+    GetTeamsAPI --> SelectTeam[Select a Team]
+    SelectTeam --> JoinAPI[POST /events/:eventId/team/:teamId]
+    JoinAPI --> Success3([Joined Team Successfully])
+    
+    style IndivReg fill:#e1f5ff
+    style CreatePublic fill:#c8e6c9
+    style CreatePrivate fill:#fff9c4
+    style BrowseTeams fill:#f8bbd0
+```
+
+### Team Registration: Public vs Private Teams
+
+When creating a team for a team event, users can specify whether their team should be **public** or **private**:
+
+#### Public Teams (`isPublic: true`)
+- Visible in the public teams list (`GET /events/:eventId/get-public-teams`)
+- Other users can browse and join these teams
+- Useful for finding teammates or allowing others to join
+- Recommended for users who want to grow their team
+
+#### Private Teams (`isPublic: false`, default)
+- Not visible in the public teams list
+- Other users cannot discover or join these teams directly
+- Team creator controls who joins (must share team ID manually)
+- Recommended for pre-formed teams or closed groups
+
+> [!NOTE]
+> By default, if `isPublic` is not specified when creating a team, it will be set to `false` (private team).
+
+### Registration Flow Details
+
+#### Individual Event Registration Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API
+    participant DB
+    
+    User->>API: POST /events/register
+    Note over User,API: eventId, participationType: "INDIVIDUAL"
+    
+    API->>DB: Validate Event Exists
+    API->>DB: Check Registration Deadline
+    API->>DB: Check if Already Registered
+    
+    alt Valid Registration
+        API->>DB: Create Participation Record
+        API->>DB: Update Event.registeredParticipation
+        API->>DB: Update User.participation
+        DB-->>API: Success
+        API-->>User: 201 Registration Complete
+    else Error
+        API-->>User: 4xx/5xx Error Response
+    end
+```
+
+#### Team Creation Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API
+    participant DB
+    
+    User->>API: POST /events/:eventId/create-team
+    Note over User,API: teamName, isPublic (optional)
+    
+    API->>DB: Validate Event (must be TEAM type)
+    API->>DB: Check Registration Deadline
+    API->>DB: Check User Not in Another Team
+    
+    alt Valid Team Creation
+        API->>DB: Create Team Participation
+        Note over DB: participationType: "TEAM"<br/>teamMember: [userId]<br/>isPublic: true/false
+        API->>DB: Update Event & User Records
+        DB-->>API: Team Created
+        API-->>User: 201 Team Created Successfully
+    else Error
+        API-->>User: 4xx/5xx Error Response
+    end
+```
+
+#### Join Public Team Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant API
+    participant DB
+    
+    User->>API: GET /events/:eventId/get-public-teams
+    API->>DB: Find Public Teams (isPublic: true)
+    DB-->>API: List of Public Teams
+    API-->>User: 200 Teams List
+    
+    User->>API: POST /events/:eventId/team/:teamId
+    
+    API->>DB: Validate Team & Event
+    API->>DB: Check Team is Public
+    API->>DB: Check Registration Deadline
+    API->>DB: Check User Not in Another Team
+    API->>DB: Check Team Not Full
+    
+    alt Valid Join Request
+        API->>DB: Add User to teamMember Array
+        API->>DB: Update User.participation
+        DB-->>API: Joined Successfully
+        API-->>User: 200 Joined Team
+    else Error
+        API-->>User: 4xx/5xx Error Response
+    end
+```
+
+### Key Validation Rules
+
+1. **Registration Deadline**: All registration operations check if the event's `registrationDeadline` has passed
+2. **No Duplicate Registration**: Users cannot register for the same event twice
+3. **Team Event Constraints**: 
+   - Users can only be part of one team per event
+   - Teams must respect `teamConfig.maxSize` limit
+   - Only public teams can be discovered and joined via API
+4. **Event Type Matching**: Registration type must match event type (INDIVIDUAL or TEAM)
 
 ---
 
@@ -911,16 +1069,53 @@ The API uses HTTP-only cookies for session management. After successful login/si
 **Request Body**:
 ```json
 {
-  "teamName": "Team Alpha"
+  "teamName": "Team Alpha",
+  "isPublic": true
+}
+```
+
+**Field Descriptions**:
+- `teamName` (required): Name of the team
+- `isPublic` (optional, default: `false`): 
+  - `true`: Team is visible in public teams list and others can join
+  - `false`: Team is private and not discoverable by others
+
+> [!IMPORTANT]
+> **Public vs Private Teams**:
+> - **Public teams** (`isPublic: true`) are visible via the `/events/:eventId/get-public-teams` endpoint and allow other users to join
+> - **Private teams** (`isPublic: false`, default) are hidden from public listing and require manual coordination to add members
+> - If `isPublic` is not specified, the team defaults to **private** (`false`)
+
+**Example - Creating a Public Team**:
+```json
+{
+  "teamName": "CodeMasters",
+  "isPublic": true
+}
+```
+
+**Example - Creating a Private Team**:
+```json
+{
+  "teamName": "Private Squad",
+  "isPublic": false
+}
+```
+
+**Or simply** (defaults to private):
+```json
+{
+  "teamName": "Private Squad"
 }
 ```
 
 **Validation Rules**:
 - `teamName`: required string
+- `isPublic`: optional boolean (defaults to false)
 - Event must exist and not be deleted
+- Event must be of type "TEAM"
 - Registration deadline must not have passed
 - User cannot be part of another team for the same event
-- Event must be of type "TEAM"
 
 **Success Response** (201):
 ```json
@@ -942,6 +1137,12 @@ The API uses HTTP-only cookies for session management. After successful login/si
 }
 ```
 
+**Success Response Notes**:
+- `teamMember` array initially contains only the creator's user ID
+- `isPublic` field indicates whether the team is publicly discoverable
+- A `Participation` record is created with type "TEAM"
+- The creator is automatically added to the team and registered for the event
+
 **Error Responses**:
 - `400`: Invalid input, invalid event ID, event not found, registration deadline passed, user already in a team
 - `401`: Unauthorized
@@ -960,7 +1161,17 @@ The API uses HTTP-only cookies for session management. After successful login/si
 **URL Parameters**:
 - `eventId`: Event ID (MongoDB ObjectId)
 
-**Description**: Retrieves all public teams for a team event, ordered by registration date (newest first)
+**Description**: 
+Retrieves all public teams (where `isPublic: true`) for a team event, ordered by registration date (newest first). This endpoint allows users to browse available teams they can join before making a decision.
+
+**Use Cases**:
+- Users wanting to join an existing team can browse available public teams
+- See team names and current members before joining
+- Check how many spots are available in each team
+- Only returns teams with `isPublic` set to `true` - private teams are not visible
+
+> [!NOTE]
+> This endpoint only returns teams where `isPublic: true`. Private teams (`isPublic: false`) are not included in the response.
 
 **Success Response** (200):
 ```json
@@ -982,10 +1193,29 @@ The API uses HTTP-only cookies for session management. After successful login/si
         }
       ],
       "registeredAt": "2026-01-05T10:00:00.000Z"
+    },
+    {
+      "_id": "507f1f77bcf86cd799439015",
+      "teamName": "Code Warriors",
+      "teamMember": [
+        {
+          "_id": "507f1f77bcf86cd799439016",
+          "name": "Alice Johnson",
+          "email": "alice@example.com"
+        }
+      ],
+      "registeredAt": "2026-01-04T15:30:00.000Z"
     }
   ]
 }
 ```
+
+**Response Field Details**:
+- `_id`: Team participation ID (use this to join the team)
+- `teamName`: Name of the team
+- `teamMember`: Array of users currently in the team (populated with name and email)
+- `registeredAt`: When the team was created
+- Teams are sorted by `registeredAt` in descending order (newest first)
 
 **Empty Response** (200):
 ```json
@@ -1011,34 +1241,87 @@ The API uses HTTP-only cookies for session management. After successful login/si
 **Authentication**: Required
 
 **URL Parameters**:
-- `eventId`: Event ID (MongoDB ObjectId)
-- `teamId`: Team participation ID (MongoDB ObjectId)
+- `eventId`: Event ID (MongoDB ObjectId) - The event the team is registered for
+- `teamId`: Team participation ID (MongoDB ObjectId) - The team's `_id` from the public teams list
 
-**Description**: Allows a user to join an existing public team for a team event.
+**Description**: 
+Allows an authenticated user to join an existing team for a team event. The team must be public (`isPublic: true`) for users to join via this endpoint.
+
+**How to Use**:
+1. First, call `GET /events/:eventId/get-public-teams` to browse available teams
+2. Select a team from the response and note its `_id`
+3. Call this endpoint with the team's `_id` as the `teamId` parameter
+4. You will be added to the team's `teamMember` array
 
 **Validation Rules**:
 - Event must exist and be of type "TEAM"
-- Team must exist and be public
+- Team must exist and belong to the specified event
+- Team must be public (`isPublic: true`) - private teams cannot be joined this way
 - Registration deadline must not have passed
 - User cannot already be part of another team for the same event
-- Team must not be full (based on event's max team size)
+- Team must not be full (current size < event's `teamConfig.maxSize`)
+- User must be authenticated
+
+> [!IMPORTANT]
+> **Only public teams can be joined**. If you try to join a private team (`isPublic: false`), the join will fail. Private teams require manual coordination with the team creator.
+
+**Example Request**:
+```
+POST /events/507f1f77bcf86cd799439011/team/507f1f77bcf86cd799439012
+```
 
 **Success Response** (200):
 ```json
 {
   "message": "Joined Team successfully",
   "data": {
-    "teamId": "507f1f77bcf86cd799439011",
+    "teamId": "507f1f77bcf86cd799439012",
     "teamSize": 3
   }
 }
 ```
 
+**Success Response Details**:
+- `teamId`: The participation ID of the team you joined
+- `teamSize`: Updated number of members in the team after you joined
+- Your user ID is added to the team's `teamMember` array
+- The participation is also added to your user profile's `participation` array
+
+**Error Response Examples**:
+
+*Team is Full*:
+```json
+{
+  "message": "Team is full. Maximum allowed members are 4"
+}
+```
+
+*User Already in Another Team*:
+```json
+{
+  "message": "User is already part of a team"
+}
+```
+
+*Registration Deadline Passed*:
+```json
+{
+  "message": "Registration deadline has passed. Joining teams is no longer allowed for this event."
+}
+```
+
+*Team Not Found or Not Public*:
+```json
+{
+  "message": "Team not found"
+}
+```
+
 **Error Responses**:
-- `400`: Invalid event/team ID, event not a team event, registration deadline passed, user already in a team, team is full
-- `401`: Unauthorized
-- `404`: Event or team not found
-- `500`: Failed to join team
+- `400`: Invalid event/team ID format, event not a team event, registration deadline passed, user already in a team for this event, team is full
+- `401`: Unauthorized (not authenticated)
+- `404`: Event or team not found (or team is private)
+- `500`: Failed to join team (server error)
 
 ---
 
@@ -1208,26 +1491,88 @@ The API uses HTTP-only cookies for session management. After successful login/si
 ```
 
 ### Participation Model
+
+The Participation model represents a user's registration for an event. It can represent either an individual participation or a team participation.
+
 ```javascript
 {
   _id: ObjectId,
   event: ObjectId (ref: Event, required),
-  user: ObjectId (ref: User),
-  teamMember: [ObjectId] (ref: User),
-  teamName: String,
+  user: ObjectId (ref: User), // Used for INDIVIDUAL participations only
+  teamMember: [ObjectId] (ref: User), // Used for TEAM participations only (array of user IDs)
+  teamName: String, // Team name (only for TEAM participations)
   participationType: String (enum: ["INDIVIDUAL", "TEAM"], required),
   registeredAt: Date (default: Date.now),
-  isPresent: Boolean (default: false),
+  isPresent: Boolean (default: false), // Whether participant/team attended the event
   markedPresentAt: Date,
-  rank: Number,
-  score: Number (default: 0),
-  isQualified: Boolean (default: false),
-  isPublic: Boolean (default: false),
+  rank: Number, // Final rank in the event
+  score: Number (default: 0), // Score achieved in the event
+  isQualified: Boolean (default: false), // Whether qualified for next round
+  isPublic: Boolean (default: false), // Only for TEAM: whether team is publicly visible/joinable
   remarks: String,
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
+**Field Explanations**:
+
+- **event**: Reference to the Event document
+- **user**: For INDIVIDUAL participations, this is the user ID. For TEAM participations, this is `null` or unused
+- **teamMember**: For TEAM participations, this is an array of user IDs representing team members. For INDIVIDUAL participations, this is empty
+- **teamName**: The name of the team (only applicable for TEAM participations)
+- **participationType**: Either "INDIVIDUAL" or "TEAM"
+- **isPublic**: 
+  - For TEAM participations: `true` means the team is visible in public teams list and others can join; `false` means private team
+  - For INDIVIDUAL participations: not applicable (defaults to false)
+  - Default value: `false`
+
+**Usage Patterns**:
+
+*Individual Participation*:
+```javascript
+{
+  _id: "507f1f77bcf86cd799439012",
+  event: "507f1f77bcf86cd799439011",
+  user: "507f1f77bcf86cd799439013",
+  participationType: "INDIVIDUAL",
+  teamMember: [], // Empty
+  teamName: null, // Not used
+  isPublic: false // Not applicable for individual
+}
+```
+
+*Team Participation (Public)*:
+```javascript
+{
+  _id: "507f1f77bcf86cd799439014",
+  event: "507f1f77bcf86cd799439011",
+  user: null, // Not used for teams
+  teamMember: ["507f1f77bcf86cd799439015", "507f1f77bcf86cd799439016"],
+  teamName: "Team Alpha",
+  participationType: "TEAM",
+  isPublic: true // Team is publicly visible and joinable
+}
+```
+
+*Team Participation (Private)*:
+```javascript
+{
+  _id: "507f1f77bcf86cd799439017",
+  event: "507f1f77bcf86cd799439011",
+  user: null,
+  teamMember: ["507f1f77bcf86cd799439018", "507f1f77bcf86cd799439019"],
+  teamName: "Secret Squad",
+  participationType: "TEAM",
+  isPublic: false // Team is private and not visible in public listings
+}
+```
+
+**Indexes**:
+- `{ event: 1, user: 1 }` - For quickly finding user's participation in an event
+- `{ event: 1, teamMember: 1 }` - For quickly finding teams a user is part of
+- `{ event: 1, isQualified: 1 }` - For filtering qualified participants
+- `{ event: 1 }`, `{ registeredAt: 1 }`, `{ isPresent: 1 }`, `{ isQualified: 1 }`, `{ isPublic: 1 }` - Individual field indexes
 
 ### Domain Model
 ```javascript
@@ -1404,6 +1749,43 @@ curl -X GET http://localhost:5000/user/profile \
 ```bash
 curl -X GET http://localhost:5000/events/
 ```
+
+---
+
+### Testing with Postman (User Management)
+
+Since the API uses HTTP-only cookies for authentication, testing in Postman requires specific steps, especially for protected endpoints like fetching users.
+
+#### 1. Login as Super Admin first
+The endpoints to get users are restricted to `SUPER_ADMIN` accounts.
+- **Method**: `POST`
+- **URL**: `http://localhost:5000/user/login` (or production URL)
+- **Body**:
+  ```json
+  {
+    "email": "superadmin@effulgence.com", 
+    "password": "superadminpassword"
+  }
+  ```
+- **Action**: Send the request. Postman will automatically receive and store the `authToken` cookie.
+
+#### 2. Get All Users (Internal & External)
+Retrieves the complete list of registered users.
+- **Method**: `GET`
+- **URL**: `http://localhost:5000/user/users`
+- **Headers**: No special headers needed (Cookie is sent automatically)
+- **Response**: Returns an array of all users.
+
+#### 3. Get External Users Only
+Retrieves only the users who are **not** internal (non-KNIT students).
+- **Method**: `GET`
+- **URL**: `http://localhost:5000/user/users/external`
+- **Response**: Returns an array of external users.
+
+#### 4. Troubleshooting
+- **401 Unauthorized**: Your session cookie is missing or expired. Run the **Login** request again.
+- **403 Forbidden**: You are logged in, but your user account does not have the `SUPER_ADMIN` role.
+- **Cookies**: Ensure the "Cookie" button in Postman (near the Send button) shows the `authToken` being sent with the request.
 
 ---
 

@@ -54,6 +54,11 @@ class UpdateEventParams {
 class CreateTeamParams {
   final String eventId;
   final String teamName;
+  final bool isPublic;
 
-  const CreateTeamParams({required this.eventId, required this.teamName});
+  const CreateTeamParams({
+    required this.eventId,
+    required this.teamName,
+    this.isPublic = false, // Default to private team
+  });
 }

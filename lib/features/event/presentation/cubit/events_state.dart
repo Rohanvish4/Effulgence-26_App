@@ -1,5 +1,6 @@
 import '../../domain/entities/event_entity.dart';
 import '../../domain/entities/participation_entity.dart';
+import '../../domain/entities/public_team_entity.dart';
 
 /// Events state hierarchy
 /// All states extend EventsState and implement Equatable for comparison.
@@ -228,6 +229,52 @@ class EventDeleted extends EventsState {
 /// Unified successful event restoration state
 class EventRestored extends EventsState {
   const EventRestored();
+}
+
+// ===========================================================================
+// PUBLIC TEAMS STATES (Browsing teams for team events)
+// ===========================================================================
+
+/// Loading state while fetching public teams
+class PublicTeamsLoading extends EventsState {
+  const PublicTeamsLoading();
+}
+
+/// Loaded state with public teams data
+class PublicTeamsLoaded extends EventsState {
+  final List<PublicTeamEntity> teams;
+
+  const PublicTeamsLoaded({required this.teams});
+}
+
+/// Error state when public teams loading fails
+class PublicTeamsError extends EventsState {
+  final String message;
+
+  const PublicTeamsError({required this.message});
+}
+
+// ===========================================================================
+// TEAM JOIN STATES (Joining existing teams)
+// ===========================================================================
+
+/// Loading state while joining team
+class TeamJoinLoading extends EventsState {
+  const TeamJoinLoading();
+}
+
+/// Success state after joining team
+class TeamJoinSuccess extends EventsState {
+  final String message;
+
+  const TeamJoinSuccess({required this.message});
+}
+
+/// Error state when joining team fails
+class TeamJoinError extends EventsState {
+  final String message;
+
+  const TeamJoinError({required this.message});
 }
 
 /// Unified error state for admin operations

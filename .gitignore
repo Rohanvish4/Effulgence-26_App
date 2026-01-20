@@ -70,3 +70,4 @@ app.*.map.json
 # Documentation
 PRE_PUSH_REVIEW.md
 PUSH_READY_SUMMARY.md
+API_DOCUMENTATION.md

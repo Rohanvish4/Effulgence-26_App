@@ -72,11 +72,16 @@ class EventsCubit extends Cubit<EventsState> {
   Future<void> createTeam({
     required String eventId,
     required String teamName,
+    bool isPublic = false,
   }) async {
     emit(const TeamCreationLoading());
 
     final result = await eventsRepository.createTeam(
-      CreateTeamParams(eventId: eventId, teamName: teamName),
+      CreateTeamParams(
+        eventId: eventId,
+        teamName: teamName,
+        isPublic: isPublic,
+      ),
     );
 
     result.fold(
@@ -99,6 +104,34 @@ class EventsCubit extends Cubit<EventsState> {
       (failure) => emit(MyParticipationsError(message: failure.message)),
       (participations) =>
           emit(MyParticipationsLoaded(participations: participations)),
+    );
+  }
+
+  /// Load public teams for a team event
+  Future<void> loadPublicTeams(String eventId) async {
+    emit(const PublicTeamsLoading());
+
+    final result = await eventsRepository.getPublicTeams(eventId);
+
+    result.fold(
+      (failure) => emit(PublicTeamsError(message: failure.message)),
+      (teams) => emit(PublicTeamsLoaded(teams: teams)),
+    );
+  }
+
+  /// Join an existing team
+  Future<void> joinTeam({
+    required String eventId,
+    required String teamId,
+  }) async {
+    emit(const TeamJoinLoading());
+
+    final result = await eventsRepository.joinTeam(eventId, teamId);
+
+    result.fold(
+      (failure) => emit(TeamJoinError(message: failure.message)),
+      (_) =>
+          emit(const TeamJoinSuccess(message: 'Successfully joined the team!')),
     );
   }
 

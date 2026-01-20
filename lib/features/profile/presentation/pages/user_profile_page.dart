@@ -87,9 +87,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withOpacity(0.1),
+                  backgroundColor: Colors.red.withValues(alpha:0.1),
                   foregroundColor: Colors.red,
-                  side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                  side: BorderSide(color: Colors.red.withValues(alpha:0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 onPressed: () {
@@ -103,9 +103,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withOpacity(0.1),
+                  backgroundColor: Colors.red.withValues(alpha:0.1),
                   foregroundColor: Colors.red,
-                  side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                  side: BorderSide(color: Colors.red.withValues(alpha:0.5)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 onPressed: () {},
@@ -156,7 +156,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: _getStatusColor(profile.approvalStatus).withOpacity(0.2),
+            color: _getStatusColor(profile.approvalStatus).withValues(alpha:0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: _getStatusColor(profile.approvalStatus)),
           ),

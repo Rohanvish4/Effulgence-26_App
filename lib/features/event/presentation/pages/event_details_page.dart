@@ -9,6 +9,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/extensions.dart';
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
+import '../widgets/public_teams_bottom_sheet.dart';
+import '../widgets/team_creation_dialog.dart';
 
 /// Event Details Page - Premium UI with Hero Animation & Glassmorphism
 class EventDetailsPage extends StatefulWidget {
@@ -429,11 +431,24 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
 
     if (event.isTeam) {
-      return GradientButton(
-        text: 'CREATE TEAM & REGISTER',
-        icon: Icons.group_add,
-        isLoading: state is TeamCreationLoading,
-        onPressed: () => _showTeamCreationDialog(context, event.id),
+      return Column(
+        children: [
+          GradientButton(
+            text: 'CREATE TEAM & REGISTER',
+            icon: Icons.group_add,
+            isLoading: state is TeamCreationLoading,
+            onPressed: () {
+              _showTeamCreationDialog(context, event.id);
+              setState(() {});
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextButton(
+            text: 'Or Browse Existing Teams',
+            icon: Icons.groups,
+            onPressed: () => _showPublicTeamsSheet(context, event),
+          ),
+        ],
       );
     }
 
@@ -474,113 +489,13 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       barrierDismissible: false,
       builder: (dialogContext) => BlocProvider.value(
         value: eventsCubit,
-        child: BlocBuilder<EventsCubit, EventsState>(
-          builder: (context, state) {
-            final isLoading = state is TeamCreationLoading;
-
-            return AlertDialog(
-              backgroundColor: AppColors.bgSecondary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                side: BorderSide(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              title: Row(
-                children: [
-                  Icon(Icons.groups, color: AppColors.primary),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text('Create Team', style: AppTextStyles.titleMedium),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Enter a creative name for your team.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  TextField(
-                    controller: teamNameController,
-                    enabled: !isLoading,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Team Name',
-                      labelStyle: TextStyle(color: AppColors.textMuted),
-                      hintText: 'e.g., Code Warriors',
-                      hintStyle: TextStyle(
-                        color: AppColors.textMuted.withValues(alpha: 0.5),
-                      ),
-                      prefixIcon: Icon(Icons.edit, color: AppColors.primary),
-                      filled: true,
-                      fillColor: AppColors.bgPrimary,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        borderSide: BorderSide(color: AppColors.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        borderSide: BorderSide(color: AppColors.primary),
-                      ),
-                    ),
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading
-                      ? null
-                      : () {
-                          Navigator.pop(dialogContext);
-                          _isDialogVisible = false;
-                        },
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ),
-                AppButton(
-                  text: 'Create',
-                  icon: Icons.check,
-                  isLoading: isLoading,
-                  height: 40,
-                  isFullWidth: false,
-                  onPressed: () {
-                    final teamName = teamNameController.text.trim();
-                    if (teamName.isEmpty) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter a team name'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
-                      return;
-                    }
-                    // Don't pop here; let the listener in the parent page handle success
-                    eventsCubit.createTeam(
-                      eventId: eventId,
-                      teamName: teamName,
-                    );
-                  },
-                ),
-              ],
-            );
+        child: TeamCreationDialogContent(
+          eventId: eventId,
+          teamNameController: teamNameController,
+          eventsCubit: eventsCubit,
+          onClose: () {
+            Navigator.pop(dialogContext);
+            _isDialogVisible = false;
           },
         ),
       ),
@@ -588,6 +503,18 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       // Ensure flag is reset if dialog is dismissed by back button
       _isDialogVisible = false;
     });
+  }
+
+  void _showPublicTeamsSheet(BuildContext context, EventEntity event) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BlocProvider.value(
+        value: context.read<EventsCubit>(),
+        child: PublicTeamsBottomSheet(event: event),
+      ),
+    );
   }
 
   void _showSnackBar(String message, Color color) {
