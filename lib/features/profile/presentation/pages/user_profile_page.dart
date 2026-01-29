@@ -1,3 +1,5 @@
+import 'package:effulgence26_mobile_app/features/profile/presentation/pages/log_out_and_delete_profile_widget.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -74,42 +76,41 @@ class _UserProfilePageState extends State<UserProfilePage> {
       onRefresh: () => context.read<ProfileCubit>().loadProfile(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-
-        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            SizedBox(height: 80),
             _buildProfileHeader(profile),
             const SizedBox(height: 24),
             _buildInfoCard(profile),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withValues(alpha:0.1),
-                  foregroundColor: Colors.red,
-                  side: BorderSide(color: Colors.red.withValues(alpha:0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: () {
-                  _showLogoutConfirmation(context);
-                },
-                child: const Text('Logout'),
-              ),
-            ),
-            SizedBox(height: 2.0),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.withValues(alpha:0.1),
-                  foregroundColor: Colors.red,
-                  side: BorderSide(color: Colors.red.withValues(alpha:0.5)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: () {},
-                child: const Text('Delete account'),
+            
+            ExpandableShowWidget(
+              showMore: Text("Show More", style: TextStyle(color: Colors.white),),
+              arrowColor: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  GestureDetector(
+                      onTap: (){
+                        _showLogoutConfirmation(context);
+                      },
+                      child: const Text('Logout', style: TextStyle(
+                          decoration: TextDecoration.underline,
+                          color: Colors.white,
+                        fontSize: 15
+                      ))
+                  ),
+                   GestureDetector(
+                     onTap: (){
+
+                     },
+                     child: const Text('Delete account', style: TextStyle(
+                       decoration: TextDecoration.underline,
+                       color: Colors.white,
+                       fontSize: 15
+                     ))
+                   )
+
+                ],
               ),
             ),
           ],
@@ -119,112 +120,106 @@ class _UserProfilePageState extends State<UserProfilePage> {
   }
 
   Widget _buildProfileHeader(UserProfileEntity profile) {
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.primary, width: 2),
-            image: profile.imageUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(profile.imageUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
+        const SizedBox(width: 40),
+        Expanded(
+          child: Column(
+            children: [
+              SizedBox(height: 80),
+                 SizedBox(
+                  height: 150,
+                  child: profile.imageUrl == null
+                      ? const Icon(Icons.person, size: 150, color: Colors.white54)
+                      : null,
+                ),
+              const SizedBox(height: 16),
+              Text(
+                profile.name,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                profile.email,
+                style: const TextStyle(fontSize: 14, color: Colors.white54),
+              ),
+              const SizedBox(height: 12),
+            ],
           ),
-          child: profile.imageUrl == null
-              ? const Icon(Icons.person, size: 50, color: Colors.white54)
-              : null,
         ),
-        const SizedBox(height: 16),
-        Text(
-          profile.name,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          profile.email,
-          style: const TextStyle(fontSize: 14, color: Colors.white54),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: _getStatusColor(profile.approvalStatus).withValues(alpha:0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _getStatusColor(profile.approvalStatus)),
-          ),
-          child: Text(
-            profile.approvalStatus.toUpperCase(),
-            style: TextStyle(
-              color: _getStatusColor(profile.approvalStatus),
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+
+        Column(
+          children: [
+            SizedBox(height: 40),
+            Container(alignment: Alignment.center, width: 40,
+                child: IconButton( onPressed: (){
+                  navigateToEditPage();
+                }, icon: const Icon(Icons.edit_note_rounded), color: Colors.white,),),
+          ],
         ),
       ],
     );
   }
+  Future<void> navigateToEditPage() async {
+    await context.push<String>('/editUserDetails');
+  }
 
   Widget _buildInfoCard(UserProfileEntity profile) {
+    const boxGaps = 3.0;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.bgSecondary,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceVariant),
-      ),
+      padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          _buildInfoRow(
-            Icons.badge,
-            'User ID',
-            profile.id,
-          ), // Using ID as EffulgenceID fallback
-          const Divider(color: AppColors.surfaceVariant),
-          _buildInfoRow(Icons.phone, 'Mobile', profile.mobile.toString()),
-          const Divider(color: AppColors.surfaceVariant),
-          _buildInfoRow(Icons.numbers, 'Roll No', profile.rollNo.toString()),
-          const Divider(color: AppColors.surfaceVariant),
-          _buildInfoRow(Icons.school, 'Role', profile.role),
-          const Divider(color: AppColors.surfaceVariant),
-          _buildInfoRow(
-            Icons.verified,
-            'Email Verified',
-            profile.isEmailVerified ? 'Yes' : 'No',
+          Container(
+            alignment: Alignment.centerLeft,
+            child: Text("Details", style:TextStyle(color: Colors.white, fontSize: 14),),
           ),
+          const SizedBox(height: 10),
+
+          _buildInfoRow(Icons.phone, 'Mobile', profile.mobile.toString(), borderRadius: BorderRadius.vertical(top: Radius.circular(14))),
+          const SizedBox(height: boxGaps),
+          _buildInfoRow(Icons.numbers, 'Roll No', profile.rollNo.toString()),
+          const SizedBox(height: boxGaps),
+          _buildInfoRow(Icons.golf_course, 'Course', "BTech"),
+          const SizedBox(height: boxGaps),
+          _buildInfoRow(Icons.school_outlined, 'College', "KNIT", borderRadius: BorderRadius.vertical(bottom: Radius.circular(14))),
+
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _buildInfoRow(IconData icon, String label, String value, { BorderRadius borderRadius = BorderRadius.zero}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.surfaceVariant,width: 1),
+        borderRadius: borderRadius
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.primary),
+          Icon(icon, size: 29, color: Colors.white),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 12, color: Colors.white54),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-              ),
-            ],
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 13, color: Color.fromARGB(255, 205, 205, 205)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ],
+            ),
           ),
         ],
       ),

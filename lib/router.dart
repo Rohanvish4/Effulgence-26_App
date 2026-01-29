@@ -1,5 +1,6 @@
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
+import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_edit_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -90,6 +91,11 @@ class AppRouter {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginPage(),
+      ),
+      GoRoute(
+        path: "/editUserDetails",
+        name: "editUserDetails",
+        builder: (context, state) => const UserProfileEditPage()
       ),
       GoRoute(
         path: '/register',

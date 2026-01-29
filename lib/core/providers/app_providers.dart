@@ -1,3 +1,5 @@
+import 'package:effulgence26_mobile_app/features/profile/data/datasources/edit_user_profile_remote_datasource.dart';
+import 'package:effulgence26_mobile_app/features/profile/presentation/cubit/edit_profile_cubit.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -6,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../features/profile/data/repositories/edit_user_profile_repository_impl.dart';
 import '../network/api_client.dart';
 import '../network/network_info.dart';
 
@@ -103,8 +106,17 @@ class AppProviders {
       networkInfo: networkInfo,
     );
 
+
     // PRESENTATION LAYER: Cubit
     final profileCubit = ProfileCubit(profileRepository: profileRepository);
+    final editProfileRemoteDataSource = EditProfileRemoteDataSourceImpl(
+      apiClient: apiClient,
+    );
+    final editProfileRepository = EditUserProfileRepositoryImpl(
+      remoteDataSource: editProfileRemoteDataSource,
+      networkInfo: networkInfo,
+    );
+    final editProfileCubit = EditProfileCubit(profileRepository: editProfileRepository);
 
     // =========================================================================
     // PROVIDER REGISTRATION (Dependency Injection Container)
@@ -124,6 +136,7 @@ class AppProviders {
       BlocProvider<AuthCubit>.value(value: authCubit),
       BlocProvider<EventsCubit>.value(value: eventsCubit),
       BlocProvider<ProfileCubit>.value(value: profileCubit),
+      BlocProvider<EditProfileCubit>.value(value: editProfileCubit),
 
       // =========================================================================
       // FUTURE FEATURES: Add more providers here as needed
