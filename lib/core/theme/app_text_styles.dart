@@ -117,7 +117,7 @@ class AppTextStyles {
         fontFamily: _bodyFont,
         fontSize: 14,
         fontWeight: FontWeight.w400,
-        color: AppColors.textSecondary,
+        color: AppColors.textPrimary,
         height: 1.6,
       );
 

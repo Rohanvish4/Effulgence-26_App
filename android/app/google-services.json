@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "754820773724",
+    "project_id": "effulgence-26-7e73a",
+    "storage_bucket": "effulgence-26-7e73a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:754820773724:android:342e4f6d736b6ee6d07399",
+        "android_client_info": {
+          "package_name": "in.effulgence26.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCg_IAOh0usozo088O9njtomJQJN0RF-p8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

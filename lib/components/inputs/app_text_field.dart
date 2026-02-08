@@ -28,6 +28,9 @@ class AppTextField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final AutovalidateMode? autovalidateMode;
 
+  final TextAlign textAlign;
+  final TextStyle? style;
+
   const AppTextField({
     super.key,
     this.label,
@@ -51,6 +54,8 @@ class AppTextField extends StatefulWidget {
     this.validator,
     this.inputFormatters,
     this.autovalidateMode,
+    this.textAlign = TextAlign.start,
+    this.style,
   });
 
   @override
@@ -90,17 +95,20 @@ class _AppTextFieldState extends State<AppTextField> {
           readOnly: widget.readOnly,
           maxLines: widget.obscureText ? 1 : widget.maxLines,
           maxLength: widget.maxLength,
+          textAlign: widget.textAlign,
           onTap: widget.onTap,
           onChanged: widget.onChanged,
           onFieldSubmitted: widget.onSubmitted,
           validator: widget.validator,
           inputFormatters: widget.inputFormatters,
           autovalidateMode: widget.autovalidateMode,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: widget.enabled
-                ? AppColors.textPrimary
-                : AppColors.textDisabled,
-          ),
+          style:
+              widget.style ??
+              AppTextStyles.bodyMedium.copyWith(
+                color: widget.enabled
+                    ? AppColors.textPrimary
+                    : AppColors.textDisabled,
+              ),
           decoration: InputDecoration(
             hintText: widget.hint,
             errorText: widget.errorText,

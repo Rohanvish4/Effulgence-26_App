@@ -1,0 +1,516 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../components/components.dart';
+import '../../domain/entities/event_entity.dart';
+import '../../domain/entities/participation_entity.dart';
+import '../cubit/events_cubit.dart';
+import '../cubit/events_state.dart';
+
+class AdminEventRegistrationsPage extends StatefulWidget {
+  final EventEntity event;
+
+  const AdminEventRegistrationsPage({super.key, required this.event});
+
+  @override
+  State<AdminEventRegistrationsPage> createState() =>
+      _AdminEventRegistrationsPageState();
+}
+
+class _AdminEventRegistrationsPageState
+    extends State<AdminEventRegistrationsPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<EventsCubit>().loadEventRegistrations(widget.event.id);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _exportToExcel(List<ParticipationEntity> data) async {
+    try {
+      final Excel excel = Excel.createExcel();
+      final Sheet sheet = excel['Registrations'];
+
+      final bool isTeamEvent = widget.event.eventType == 'TEAM';
+
+      // Add Event Header Row
+      _addHeaderRow(sheet, 0, ['EVENT DETAILS']);
+      int rowIndex = 1;
+
+      // Event Information
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = 'Event Name'
+        ..cellStyle = _getHeaderStyle();
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        ..value = widget.event.title;
+      rowIndex++;
+
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = 'Event Type'
+        ..cellStyle = _getHeaderStyle();
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        ..value = isTeamEvent ? 'Team Event' : 'Individual Event';
+      rowIndex++;
+
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = 'Total Registrations'
+        ..cellStyle = _getHeaderStyle();
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        ..value = data.length;
+      rowIndex++;
+
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+        ..value = 'Present'
+        ..cellStyle = _getHeaderStyle();
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+        ..value = data.where((p) => p.isPresent).length;
+      rowIndex += 2;
+
+      // Add Registrations Header
+      _addHeaderRow(
+        sheet,
+        rowIndex,
+        isTeamEvent ? _getTeamHeaders() : _getIndividualHeaders(),
+      );
+      rowIndex++;
+
+      // Add Registration Data
+      if (isTeamEvent) {
+        for (final participation in data) {
+          _addTeamRow(sheet, rowIndex, participation);
+          rowIndex++;
+          for (final member in participation.teamMembers) {
+            _addTeamMemberRow(sheet, rowIndex, member, participation.isPresent);
+            rowIndex++;
+          }
+          rowIndex++; // Space between teams
+        }
+      } else {
+        for (final participation in data) {
+          _addIndividualRow(sheet, rowIndex, participation);
+          rowIndex++;
+        }
+      }
+
+      // Save file
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName =
+          '${widget.event.title}_Registrations_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final filePath = '${directory.path}/$fileName';
+      final file = File(filePath);
+      final bytes = excel.encode();
+      await file.writeAsBytes(bytes!);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Exported to $fileName'),
+          behavior: SnackBarBehavior.floating,
+          action: SnackBarAction(
+            label: 'View',
+            onPressed: () => _openExcelFile(filePath),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export failed: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openExcelFile(String filePath) async {
+    try {
+      final result = await OpenFile.open(filePath);
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open file: ${result.message}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening file: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  List<String> _getTeamHeaders() {
+    return [
+      'Team Name',
+      'Total Members',
+      'Member Name',
+      'Member Email',
+      'Present',
+    ];
+  }
+
+  List<String> _getIndividualHeaders() {
+    return ['Name', 'Email', 'Present', 'Registration Time'];
+  }
+
+  void _addHeaderRow(Sheet sheet, int rowIndex, List<String> headers) {
+    for (int i = 0; i < headers.length; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: rowIndex))
+        ..value = headers[i]
+        ..cellStyle = _getHeaderStyle();
+    }
+  }
+
+  void _addTeamRow(
+    Sheet sheet,
+    int rowIndex,
+    ParticipationEntity participation,
+  ) {
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = participation.teamName ?? 'Unnamed Team';
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+      ..value = participation.teamMembers.length;
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+      ..value = participation.isPresent ? 'Yes' : 'No';
+  }
+
+  void _addTeamMemberRow(
+    Sheet sheet,
+    int rowIndex,
+    dynamic member,
+    bool isPresent,
+  ) {
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+      ..value = member.name ?? '';
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+      ..value = member.email ?? '';
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
+      ..value = isPresent ? 'Yes' : 'No';
+  }
+
+  void _addIndividualRow(
+    Sheet sheet,
+    int rowIndex,
+    ParticipationEntity participation,
+  ) {
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
+      ..value = participation.userName;
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
+      ..value = participation.userEmail;
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
+      ..value = participation.isPresent ? 'Yes' : 'No';
+    sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
+      ..value = DateTime.now().toString();
+  }
+
+  CellStyle _getHeaderStyle() {
+    return CellStyle(bold: true, horizontalAlign: HorizontalAlign.Center);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isTeamEvent = widget.event.eventType == 'TEAM';
+
+    return Scaffold(
+      backgroundColor: AppColors.bgPrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.bgPrimary.withValues(alpha: 0.8),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'REGISTRATIONS',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.primary,
+                letterSpacing: 2,
+              ),
+            ),
+            Text(
+              widget.event.title,
+              style: AppTextStyles.titleMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.copy_all_rounded),
+            tooltip: 'Copy all emails',
+            onPressed: () => _copyAllEmails(
+              context.read<EventsCubit>().state.myParticipations,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_download_rounded),
+            tooltip: 'Export to Excel',
+            onPressed: () => _exportToExcel(
+              context.read<EventsCubit>().state.myParticipations,
+            ),
+          ),
+        ],
+      ),
+      body: BlocBuilder<EventsCubit, EventsState>(
+        builder: (context, state) {
+          if (state.isOperationLoading)
+            return const Center(child: CircularProgressIndicator());
+
+          final registrations = state.myParticipations;
+          if (registrations.isEmpty) {
+            return const EmptyState(
+              icon: Icons.people_outline,
+              title: 'No registrations',
+            );
+          }
+
+          // Filter logic for 2G optimization (Local filtering)
+          final filtered = registrations.where((p) {
+            final query = _searchQuery.toLowerCase();
+            if (isTeamEvent) {
+              return (p.teamName?.toLowerCase().contains(query) ?? false) ||
+                  p.teamMembers.any(
+                    (m) => m.name.toLowerCase().contains(query),
+                  );
+            }
+            return p.userName.toLowerCase().contains(query) ||
+                p.userEmail.toLowerCase().contains(query);
+          }).toList();
+
+          return Column(
+            children: [
+              _buildValidationBanner(registrations, isTeamEvent),
+              _buildSummaryHeader(registrations, isTeamEvent),
+              _buildSearchBox(),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) =>
+                      _buildAdaptiveCard(filtered[index], isTeamEvent),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // VALIDATION BANNER: Anomalies surfaced immediately
+  Widget _buildValidationBanner(List<ParticipationEntity> data, bool isTeam) {
+    int anomalies = 0;
+    if (isTeam) {
+      anomalies = data
+          .where(
+            (p) =>
+                p.teamMembers.length < (widget.event.teamConfig?.minSize ?? 1),
+          )
+          .length;
+    }
+
+    if (anomalies == 0) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      color: AppColors.error.withValues(alpha: 0.2),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.error,
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '$anomalies ${isTeam ? "Teams" : "Entries"} violate event rules',
+            style: AppTextStyles.labelSmall.copyWith(
+              color: AppColors.error,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryHeader(List<ParticipationEntity> data, bool isTeam) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      margin: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStat(isTeam ? 'Teams' : 'Players', data.length.toString()),
+          _buildStat(
+            'Present',
+            data.where((p) => p.isPresent).length.toString(),
+          ),
+          if (isTeam) _buildStat('Avg Size', _calculateAvgTeamSize(data)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBox() {
+    return AppGlassSearchBar(
+      controller: _searchController,
+      hintText: 'Quick search name, team or email...',
+      onChanged: (val) => setState(() => _searchQuery = val),
+      onClear: () => setState(() => _searchQuery = ''),
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+    );
+  }
+
+  Widget _buildAdaptiveCard(ParticipationEntity p, bool isTeam) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        child: isTeam ? _buildTeamCard(p) : _buildIndividualCard(p),
+      ),
+    );
+  }
+
+  Widget _buildTeamCard(ParticipationEntity p) {
+    final bool isInvalid =
+        p.teamMembers.length < (widget.event.teamConfig?.minSize ?? 1);
+
+    return ExpansionTile(
+      shape: const RoundedRectangleBorder(side: BorderSide.none),
+      leading: CircleAvatar(
+        backgroundColor: isInvalid
+            ? AppColors.error.withValues(alpha: 0.1)
+            : AppColors.primary.withValues(alpha: 0.1),
+        child: Icon(
+          Icons.groups,
+          color: isInvalid ? AppColors.error : AppColors.primary,
+        ),
+      ),
+      title: Text(
+        p.teamName ?? 'Unnamed Team',
+        style: AppTextStyles.titleMedium,
+      ),
+      subtitle: Text(
+        '${p.teamMembers.length} Members',
+        style: AppTextStyles.bodySmall,
+      ),
+      trailing: Switch(
+        value: p.isPresent,
+        activeTrackColor: AppColors.success,
+        onChanged: (val) {
+          /* TODO: Mark Attendance */
+        },
+      ),
+      children: p.teamMembers
+          .map(
+            (m) => ListTile(
+              title: Text(m.name, style: AppTextStyles.bodyMedium),
+              subtitle: Text(m.email, style: AppTextStyles.bodySmall),
+              trailing: IconButton(
+                icon: const Icon(Icons.copy, size: 16),
+                onPressed: () => _copyToClipboard(m.email),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildIndividualCard(ParticipationEntity p) {
+    return ListTile(
+      contentPadding: const EdgeInsets.all(AppSpacing.md),
+      leading: CircleAvatar(child: Text(p.userName[0])),
+      title: Text(p.userName, style: AppTextStyles.titleMedium),
+      subtitle: Text(p.userEmail, style: AppTextStyles.bodySmall),
+      trailing: Switch(
+        value: p.isPresent,
+        activeTrackColor: AppColors.success,
+        onChanged: (val) {
+          /* TODO: Mark Attendance */
+        },
+      ),
+    );
+  }
+
+  // HELPER METHODS
+  String _calculateAvgTeamSize(List<ParticipationEntity> data) {
+    if (data.isEmpty) return '0';
+    double avg = data.expand((p) => p.teamMembers).length / data.length;
+    return avg.toStringAsFixed(1);
+  }
+
+  void _copyAllEmails(List<ParticipationEntity> data) {
+    final emails = data
+        .expand((p) => p.teamMembers)
+        .map((m) => m.email)
+        .join(', ');
+    _copyToClipboard(emails);
+  }
+
+  Future<void> _copyToClipboard(String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildStat(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: AppTextStyles.headlineSmall.copyWith(
+            color: AppColors.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.labelSmall.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}

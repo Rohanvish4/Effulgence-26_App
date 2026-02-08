@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:effulgence26_mobile_app/core/errors/exceptions.dart';
 
 import '../../../../core/constants/api_constants.dart';
@@ -13,7 +14,7 @@ abstract class AuthRemoteDataSource {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   });
 
@@ -27,7 +28,7 @@ abstract class AuthRemoteDataSource {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   });
 
@@ -61,6 +62,7 @@ abstract class AuthRemoteDataSource {
     String? name,
     String? imageUrl,
     int? mobile,
+    String? collegeName,
   });
 }
 
@@ -76,20 +78,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
     try {
+      final formData = FormData.fromMap({
+        'name': name,
+        'email': email,
+        'password': password,
+        'mobile': mobile,
+        'collegeName': collegeName,
+        if (imageUrl != null)
+          if (imageUrl.startsWith('http'))
+            'imageUrl': imageUrl
+          else
+            'imageUrl': await MultipartFile.fromFile(imageUrl),
+      });
+
       final response = await apiClient.post(
         ApiConstants.signup,
-        data: {
-          'name': name,
-          'email': email,
-          'password': password,
-          'mobile': mobile,
-          'rollNo': rollNo,
-          if (imageUrl != null) 'imageUrl': imageUrl,
-        },
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       return AuthResponseModel.fromJson(response.data);
@@ -110,20 +119,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
-    final response = await apiClient.post(
-      ApiConstants.resendOtp,
-      data: {
-        'name': name,
-        'email': email,
-        'password': password,
-        'mobile': mobile,
-        'rollNo': rollNo,
-        if (imageUrl != null) 'imageUrl': imageUrl,
-      },
-    );
+    final Map<String, dynamic> data = {
+      'name': name,
+      'email': email,
+      'password': password,
+      'mobile': mobile.toString(), // Ensure mobile is string validation passes
+      'collegeName': collegeName,
+    };
+
+    if (imageUrl != null) {
+      data['imageUrl'] = imageUrl;
+    }
+
+    final response = await apiClient.post(ApiConstants.resendOtp, data: data);
     return OtpResponseModel.fromJson(response.data);
   }
 
@@ -216,6 +227,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? name,
     String? imageUrl,
     int? mobile,
+    String? collegeName,
   }) async {
     final response = await apiClient.post(
       ApiConstants.profileEdit,
@@ -223,6 +235,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         if (name != null) 'name': name,
         if (imageUrl != null) 'imageUrl': imageUrl,
         if (mobile != null) 'mobile': mobile,
+        if (collegeName != null) 'collegeName': collegeName,
       },
     );
 

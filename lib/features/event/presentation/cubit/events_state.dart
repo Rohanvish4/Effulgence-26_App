@@ -2,6 +2,75 @@ import '../../domain/entities/event_entity.dart';
 import '../../domain/entities/participation_entity.dart';
 import '../../domain/entities/public_team_entity.dart';
 
+enum EventsStatus { initial, loading, success, failure }
+
+class EventsState {
+  final EventsStatus status;
+  final List<EventEntity> events;
+  final List<ParticipationEntity> myParticipations;
+  final List<PublicTeamEntity> publicTeams;
+  final EventEntity? selectedEvent;
+  final String? errorMessage;
+  final String? successMessage;
+
+  // Granular loading states
+  final bool isEventsLoading;
+  final bool isDetailsLoading;
+  final bool isParticipationsLoading;
+  final bool isOperationLoading; // For register, create team, etc.
+
+  const EventsState({
+    this.status = EventsStatus.initial,
+    this.events = const [],
+    this.myParticipations = const [],
+    this.publicTeams = const [],
+    this.selectedEvent,
+    this.errorMessage,
+    this.successMessage,
+    this.isEventsLoading = false,
+    this.isDetailsLoading = false,
+    this.isParticipationsLoading = false,
+    this.isOperationLoading = false,
+  });
+
+  EventsState copyWith({
+    EventsStatus? status,
+    List<EventEntity>? events,
+    List<ParticipationEntity>? myParticipations,
+    List<PublicTeamEntity>? publicTeams,
+    EventEntity? selectedEvent,
+    String? errorMessage,
+    String? successMessage,
+    bool? isEventsLoading,
+    bool? isDetailsLoading,
+    bool? isParticipationsLoading,
+    bool? isOperationLoading,
+  }) {
+    return EventsState(
+      status: status ?? this.status,
+      events: events ?? this.events,
+      myParticipations: myParticipations ?? this.myParticipations,
+      publicTeams: publicTeams ?? this.publicTeams,
+      selectedEvent: selectedEvent ?? this.selectedEvent,
+      errorMessage: errorMessage,
+      successMessage: successMessage,
+      isEventsLoading: isEventsLoading ?? this.isEventsLoading,
+      isDetailsLoading: isDetailsLoading ?? this.isDetailsLoading,
+      isParticipationsLoading:
+          isParticipationsLoading ?? this.isParticipationsLoading,
+      isOperationLoading: isOperationLoading ?? this.isOperationLoading,
+    );
+  }
+}
+
+
+
+/*
+
+import '../../domain/entities/event_entity.dart';
+import '../../domain/entities/participation_entity.dart';
+import '../../domain/entities/public_team_entity.dart';
+
 /// Events state hierarchy
 /// All states extend EventsState and implement Equatable for comparison.
 /// UI components listen to these states and rebuild accordingly.
@@ -283,3 +352,5 @@ class EventOperationError extends EventsState {
 
   const EventOperationError({required this.message});
 }
+
+*/

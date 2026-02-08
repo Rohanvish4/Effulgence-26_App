@@ -1,10 +1,23 @@
 // New entities for team management and registrations
 
+class ParticipationUser {
+  final String id;
+  final String name;
+  final String email;
+
+  const ParticipationUser({
+    required this.id,
+    required this.name,
+    required this.email,
+  });
+}
+
 class ParticipationEntity {
   final String id;
   final String eventId;
-  final String userId;
-  final List<String> teamMembers; // For team events
+  final ParticipationUser?
+  user; // Nullable to handle cases where it might be missing or just ID
+  final List<ParticipationUser> teamMembers; // For team events
   final String? teamName;
   final String participationType; // 'INDIVIDUAL' or 'TEAM'
   final DateTime registeredAt;
@@ -14,11 +27,11 @@ class ParticipationEntity {
   final int score;
   final bool isQualified;
   final String? remarks;
-  
+
   const ParticipationEntity({
     required this.id,
     required this.eventId,
-    required this.userId,
+    this.user,
     required this.teamMembers,
     this.teamName,
     required this.participationType,
@@ -34,6 +47,16 @@ class ParticipationEntity {
   // Computed properties
   bool get isIndividual => participationType == 'INDIVIDUAL';
   bool get isTeam => participationType == 'TEAM';
+    String get userId => user?.id ?? (teamMembers.isNotEmpty ? teamMembers[0].id : '');
+    String get userName =>
+      user?.name ?? (teamMembers.isNotEmpty ? teamMembers[0].name : 'Unknown');
+    String get userEmail =>
+      user?.email ?? (teamMembers.isNotEmpty ? teamMembers[0].email : '');
+
+  List<String> get teamMemberNames =>
+      teamMembers.map((member) => member.name).toList();
+  List<String> get teamMemberEmails =>
+      teamMembers.map((member) => member.email).toList();
 }
 
 class TeamEntity {
@@ -43,7 +66,7 @@ class TeamEntity {
   final List<String> memberIds;
   final String leaderId;
   final DateTime createdAt;
-  
+
   const TeamEntity({
     required this.participationId,
     required this.teamName,
@@ -53,5 +76,5 @@ class TeamEntity {
     required this.createdAt,
   });
 
-
+  
 }

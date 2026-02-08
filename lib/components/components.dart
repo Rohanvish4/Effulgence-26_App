@@ -6,6 +6,7 @@ export 'buttons/app_button.dart';
 
 // Inputs
 export 'inputs/app_text_field.dart';
+export 'inputs/app_glass_search_bar.dart';
 
 // Cards
 export 'cards/event_card.dart';
@@ -19,3 +20,5 @@ export 'states/empty_state.dart';
 
 // Common
 export 'common/common_widgets.dart';
+export 'common/particle_background.dart';
+export 'common/effulgence_background_elements.dart';

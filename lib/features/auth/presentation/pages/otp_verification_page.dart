@@ -134,7 +134,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       email: data['email'],
       password: data['password'],
       mobile: data['mobile'],
-      rollNo: data['rollNo'],
+      collegeName: data['collegeName'],
       imageUrl: data['imageUrl'],
     );
   }

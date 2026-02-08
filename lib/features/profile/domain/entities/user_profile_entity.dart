@@ -8,6 +8,12 @@ class UserProfileEntity {
   final String role;
   final bool isEmailVerified;
   final String approvalStatus;
+  final bool isInternalUser;
+  final bool isBlocked;
+  final String qrcode;
+  final String? paymentReceiptUrl;
+  final String? collegeName;
+  final String? registrationId;
 
   const UserProfileEntity({
     required this.id,
@@ -19,6 +25,12 @@ class UserProfileEntity {
     this.role = 'USER',
     this.isEmailVerified = false,
     this.approvalStatus = 'PENDING',
+    this.isInternalUser = false,
+    this.isBlocked = false,
+    this.qrcode = '',
+    this.paymentReceiptUrl,
+    this.collegeName,
+    this.registrationId,
   });
 
   // Computed Role & Status Flags
@@ -40,6 +52,12 @@ class UserProfileEntity {
     String? role,
     bool? isEmailVerified,
     String? approvalStatus,
+    bool? isInternalUser,
+    bool? isBlocked,
+    String? qrcode,
+    String? paymentReceiptUrl,
+    String? collegeName,
+    String? registrationId,
   }) {
     return UserProfileEntity(
       id: id ?? this.id,
@@ -51,6 +69,12 @@ class UserProfileEntity {
       role: role ?? this.role,
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       approvalStatus: approvalStatus ?? this.approvalStatus,
+      isInternalUser: isInternalUser ?? this.isInternalUser,
+      isBlocked: isBlocked ?? this.isBlocked,
+      qrcode: qrcode ?? this.qrcode,
+      paymentReceiptUrl: paymentReceiptUrl ?? this.paymentReceiptUrl,
+      collegeName: collegeName ?? this.collegeName,
+      registrationId: registrationId ?? this.registrationId,
     );
   }
 }

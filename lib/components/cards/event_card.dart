@@ -18,6 +18,7 @@ class EventCard extends StatelessWidget {
   final bool isRegistering;
   final String? eventType; // 'INDIVIDUAL' or 'TEAM'
   final VoidCallback? onRegister;
+  final String? heroTag;
 
   const EventCard({
     super.key,
@@ -34,6 +35,7 @@ class EventCard extends StatelessWidget {
     this.isRegistering = false,
     this.eventType,
     this.onRegister,
+    this.heroTag,
   });
 
   Color get _accentColor => accentColor ?? _getDomainColor(domain);
@@ -73,62 +75,65 @@ class EventCard extends StatelessWidget {
         ),
         child: SizedBox(
           width: double.infinity,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // LEFT ACCENT STRIP — FIXED HEIGHT
-              Container(
-                width: AppSpacing.accentStripThick,
-                height: 220, // ✅ FIXED HEIGHT
-                decoration: BoxDecoration(
-                  color: _accentColor,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(AppSpacing.radiusLg),
-                    bottomLeft: Radius.circular(AppSpacing.radiusLg),
+          child: IntrinsicHeight(
+            // Use IntrinsicHeight to match strip height to content
+            child: Row(
+              crossAxisAlignment:
+                  CrossAxisAlignment.stretch, // Stretch children vertically
+              children: [
+                // LEFT ACCENT STRIP
+                Container(
+                  width: AppSpacing.accentStripThick,
+                  decoration: BoxDecoration(
+                    color: _accentColor,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(AppSpacing.radiusLg),
+                      bottomLeft: Radius.circular(AppSpacing.radiusLg),
+                    ),
                   ),
                 ),
-              ),
 
-              // CONTENT — EXPANDED TO FILL REMAINING SPACE
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildImage(),
+                // CONTENT
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildImage(),
 
-                    Padding(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title.toUpperCase(),
-                            style: AppTextStyles.titleMedium.copyWith(
-                              fontWeight: FontWeight.w700,
+                      Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title.toUpperCase(),
+                              style: AppTextStyles.titleMedium.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-
-                          _buildInfoRow(Icons.location_on_outlined, venue),
-                          const SizedBox(height: AppSpacing.xs),
-                          _buildInfoRow(
-                            Icons.schedule,
-                            _formatDateTime(dateTime),
-                          ),
-
-                          if (showRegisterButton) ...[
                             const SizedBox(height: AppSpacing.sm),
-                            _buildRegisterButton(),
+
+                            _buildInfoRow(Icons.location_on_outlined, venue),
+                            const SizedBox(height: AppSpacing.xs),
+                            _buildInfoRow(
+                              Icons.schedule,
+                              _formatDateTime(dateTime),
+                            ),
+
+                            if (showRegisterButton) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              _buildRegisterButton(),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -138,8 +143,9 @@ class EventCard extends StatelessWidget {
   Widget _buildImage() {
     final height = AppSpacing.cardImageHeight;
 
+    Widget imageWidget;
     if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return CachedNetworkImage(
+      imageWidget = CachedNetworkImage(
         imageUrl: imageUrl!,
         height: height,
         width: double.infinity,
@@ -147,8 +153,15 @@ class EventCard extends StatelessWidget {
         errorWidget: (_, __, ___) => _imageFallback(height),
         placeholder: (_, __) => _imageFallback(height),
       );
+    } else {
+      imageWidget = _imageFallback(height);
     }
-    return _imageFallback(height);
+
+    if (heroTag != null) {
+      return Hero(tag: heroTag!, child: imageWidget);
+    }
+
+    return imageWidget;
   }
 
   Widget _imageFallback(double height) {
@@ -230,8 +243,18 @@ class EventCard extends StatelessWidget {
 
   String _formatDateTime(DateTime dt) {
     const months = [
-      'Jan','Feb','Mar','Apr','May','Jun',
-      'Jul','Aug','Sep','Oct','Nov','Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
     final period = dt.hour >= 12 ? 'PM' : 'AM';

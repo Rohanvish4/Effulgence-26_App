@@ -29,6 +29,9 @@ abstract class EventsRemoteDataSource {
   /// Join an existing team
   Future<void> joinTeam(String eventId, String teamId);
 
+  /// Leave a team
+  Future<void> leaveTeam(String eventId, String teamId);
+
   // ADMIN/SUPER_ADMIN OPERATIONS
   Future<EventModel> createEvent(CreateEventParams params);
   Future<EventModel> updateEvent(String eventId, UpdateEventParams params);
@@ -156,28 +159,37 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     await apiClient.post('/events/$eventId/team/$teamId');
   }
 
+  @override
+  Future<void> leaveTeam(String eventId, String teamId) async {
+    await apiClient.post('/events/$eventId/team/$teamId/leave');
+  }
+
   // ADMIN/SUPER_ADMIN operations
   @override
   Future<EventModel> createEvent(CreateEventParams params) async {
-    final response = await apiClient.post(
-      '/events/create',
-      data: {
-        'title': params.title,
-        'description': params.description,
-        'rules': params.rules,
-        'domain': params.domain,
-        'eventType': params.eventType,
-        'eventVenue': params.eventVenue,
-        'eventTime': params.eventTime.toIso8601String(),
-        'registrationDeadline': params.registrationDeadline.toIso8601String(),
-        'teamConfig': params.teamConfig != null
-            ? {
-                'minSize': params.teamConfig!.minSize,
-                'maxSize': params.teamConfig!.maxSize,
-              }
-            : null,
-      },
-    );
+    final Map<String, dynamic> data = {
+      'title': params.title,
+      'description': params.description,
+      'rules': params.rules,
+      'domain': params.domain,
+      'eventType': params.eventType,
+      'eventVenue': params.eventVenue,
+      'eventTime': params.eventTime.toUtc().toIso8601String(),
+      'endTime': params.endTime.toUtc().toIso8601String(),
+      'registrationDeadline': params.registrationDeadline
+          .toUtc()
+          .toIso8601String(),
+      'eventRound': params.eventRound,
+    };
+
+    if (params.teamConfig != null) {
+      data['teamConfig'] = {
+        'minSize': params.teamConfig!.minSize,
+        'maxSize': params.teamConfig!.maxSize,
+      };
+    }
+
+    final response = await apiClient.post('/events/create', data: data);
     return EventModel.fromJson(response.data['event']);
   }
 
@@ -186,27 +198,34 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     String eventId,
     UpdateEventParams params,
   ) async {
-    final response = await apiClient.patch(
-      '/events/$eventId/edit',
-      data: {
-        if (params.title != null) 'title': params.title,
-        if (params.description != null) 'description': params.description,
-        if (params.rules != null) 'rules': params.rules,
-        if (params.domain != null) 'domain': params.domain,
-        if (params.eventType != null) 'eventType': params.eventType,
-        if (params.eventVenue != null) 'eventVenue': params.eventVenue,
-        if (params.eventTime != null)
-          'eventTime': params.eventTime!.toIso8601String(),
-        if (params.registrationDeadline != null)
-          'registrationDeadline': params.registrationDeadline!
-              .toIso8601String(),
-        if (params.teamConfig != null)
-          'teamConfig': {
-            'minSize': params.teamConfig!.minSize,
-            'maxSize': params.teamConfig!.maxSize,
-          },
-      },
-    );
+    final Map<String, dynamic> data = {};
+    if (params.title != null) data['title'] = params.title;
+    if (params.description != null) data['description'] = params.description;
+    if (params.rules != null) data['rules'] = params.rules;
+    if (params.domain != null) data['domain'] = params.domain;
+    if (params.eventType != null) data['eventType'] = params.eventType;
+    if (params.eventVenue != null) data['eventVenue'] = params.eventVenue;
+    if (params.eventTime != null) {
+      data['eventTime'] = params.eventTime!.toUtc().toIso8601String();
+    }
+    if (params.endTime != null) {
+      data['endTime'] = params.endTime!.toUtc().toIso8601String();
+    }
+    if (params.registrationDeadline != null) {
+      data['registrationDeadline'] = params.registrationDeadline!
+          .toUtc()
+          .toIso8601String();
+    }
+    if (params.eventRound != null) data['eventRound'] = params.eventRound;
+    if (params.teamConfig != null) {
+      data['teamConfig'] = {
+        'minSize': params.teamConfig!.minSize,
+        'maxSize': params.teamConfig!.maxSize,
+      };
+    }
+
+
+    final response = await apiClient.patch('/events/$eventId/edit', data: data);
     return EventModel.fromJson(response.data['event']);
   }
 
@@ -223,7 +242,7 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
   // ADMIN/SUPER_ADMIN/MEMBER operations
   @override
   Future<List<ParticipationModel>> getEventRegistrations(String eventId) async {
-    final response = await apiClient.get('/events/registrations/$eventId');
+    final response = await apiClient.get('/events/$eventId/registrations');
     final List<dynamic> data = response.data['registeredParticipation'] ?? [];
     return data.map((json) => ParticipationModel.fromJson(json)).toList();
   }

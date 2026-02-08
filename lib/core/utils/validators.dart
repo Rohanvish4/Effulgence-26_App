@@ -27,8 +27,12 @@ class Validators {
       return 'Password is required';
     }
 
-    if (value.length < AppConstants.minPasswordLength) {
-      return 'Password must be at least ${AppConstants.minPasswordLength} characters';
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+
+    if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$').hasMatch(value)) {
+      return 'Password must contain at least one letter and one number';
     }
 
     return null;
@@ -83,6 +87,19 @@ class Validators {
 
     if (int.tryParse(value) == null) {
       return 'Please enter a valid roll number';
+    }
+
+    return null;
+  }
+
+  /// College name validation
+  static String? validateCollegeName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'College name is required';
+    }
+
+    if (value.trim().length < 2) {
+      return 'College name must be at least 2 characters';
     }
 
     return null;

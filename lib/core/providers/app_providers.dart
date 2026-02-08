@@ -1,5 +1,3 @@
-import 'package:effulgence26_mobile_app/features/profile/data/datasources/edit_user_profile_remote_datasource.dart';
-import 'package:effulgence26_mobile_app/features/profile/presentation/cubit/edit_profile_cubit.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../features/profile/data/repositories/edit_user_profile_repository_impl.dart';
 import '../network/api_client.dart';
 import '../network/network_info.dart';
 
@@ -24,6 +21,15 @@ import '../../features/event/presentation/cubit/events_cubit.dart';
 import '../../features/profile/data/datasources/user_profile_remote_datasource.dart';
 import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+
+import '../../features/sponsors/data/datasources/sponsor_local_datasource.dart';
+import '../../features/sponsors/data/repositories/sponsor_repository_impl.dart';
+import '../../features/sponsors/presentation/cubit/sponsors_cubit.dart';
+
+import '../../features/qrcode/data/datasources/qrcode_remote_datasource.dart';
+import '../../features/qrcode/data/repositories/qrcode_repository_impl.dart';
+import '../../features/qrcode/presentation/cubit/qrcode_cubit.dart';
+import '../../features/qrcode/presentation/cubit/qr_verification_cubit.dart';
 
 /// App-wide providers and dependency injection
 class AppProviders {
@@ -72,6 +78,12 @@ class AppProviders {
     // Initialize auth state on app startup
     await authCubit.checkAuthStatus();
 
+    // Listen for session expiration events (401/403) from ApiClient
+    // and trigger logout when they occur
+    apiClient.sessionExpiredStream.listen((_) {
+      authCubit.logout();
+    });
+
     // =========================================================================
     // EVENTS FEATURE DEPENDENCY INJECTION
     // =========================================================================
@@ -89,7 +101,7 @@ class AppProviders {
     );
 
     // PRESENTATION LAYER: Cubit (state management for events)
-    final eventsCubit = EventsCubit(eventsRepository: eventsRepository);
+    final eventsCubit = EventsCubit(eventsRepository);
 
     // =========================================================================
     // PROFILE FEATURE DEPENDENCY INJECTION
@@ -106,17 +118,43 @@ class AppProviders {
       networkInfo: networkInfo,
     );
 
+    // PRESENTATION LAYER: Cubit
+
+    // =========================================================================
+    // SPONSORS FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+
+    // DATA LAYER: Local Data Source (mock data)
+    final sponsorLocalDataSource = SponsorLocalDataSource();
+
+    // DATA LAYER: Repository Implementation
+    final sponsorRepository = SponsorRepositoryImpl(
+      localDataSource: sponsorLocalDataSource,
+    );
 
     // PRESENTATION LAYER: Cubit
-    final profileCubit = ProfileCubit(profileRepository: profileRepository);
-    final editProfileRemoteDataSource = EditProfileRemoteDataSourceImpl(
+    final sponsorsCubit = SponsorsCubit(repository: sponsorRepository);
+
+    // =========================================================================
+    // QR CODE FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+
+    // DATA LAYER: Remote Data Source
+    final qrCodeRemoteDataSource = QrCodeRemoteDataSourceImpl(
       apiClient: apiClient,
     );
-    final editProfileRepository = EditUserProfileRepositoryImpl(
-      remoteDataSource: editProfileRemoteDataSource,
+
+    // DATA LAYER: Repository Implementation
+    final qrCodeRepository = QrCodeRepositoryImpl(
+      remoteDataSource: qrCodeRemoteDataSource,
       networkInfo: networkInfo,
     );
-    final editProfileCubit = EditProfileCubit(profileRepository: editProfileRepository);
+
+    // PRESENTATION LAYER: Cubit
+    final qrCodeCubit = QrCodeCubit(repository: qrCodeRepository);
+    final qrVerificationCubit = QrVerificationCubit(
+      repository: qrCodeRepository,
+    );
 
     // =========================================================================
     // PROVIDER REGISTRATION (Dependency Injection Container)
@@ -127,6 +165,7 @@ class AppProviders {
       // REPOSITORIES (Domain Layer Interfaces - Business Logics)
       // =========================================================================
       Provider<AuthRepositoryImpl>.value(value: authRepository),
+      Provider<PersistCookieJar>.value(value: cookieJar),
       // Provider<EventsRepositoryImpl>.value(value: eventsRepository),
       Provider<UserProfileRepositoryImpl>.value(value: profileRepository),
 
@@ -135,9 +174,12 @@ class AppProviders {
       // =========================================================================
       BlocProvider<AuthCubit>.value(value: authCubit),
       BlocProvider<EventsCubit>.value(value: eventsCubit),
-      BlocProvider<ProfileCubit>.value(value: profileCubit),
-      BlocProvider<EditProfileCubit>.value(value: editProfileCubit),
-
+      BlocProvider<ProfileCubit>.value(
+        value: ProfileCubit(profileRepository: profileRepository),
+      ),
+      BlocProvider<SponsorsCubit>.value(value: sponsorsCubit),
+      BlocProvider<QrCodeCubit>.value(value: qrCodeCubit),
+      BlocProvider<QrVerificationCubit>.value(value: qrVerificationCubit),
       // =========================================================================
       // FUTURE FEATURES: Add more providers here as needed
       // =========================================================================

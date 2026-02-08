@@ -8,6 +8,7 @@ import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 import '../../../../components/cards/team_card.dart';
 import '../../../../components/buttons/app_button.dart';
+import '../../../../components/bottom_sheets/team_details_bottom_sheet.dart';
 
 /// Public Teams Bottom Sheet to show all public tms for an evnt
 /// Allows users to browsee and join existing teams
@@ -34,25 +35,34 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
   Widget build(BuildContext context) {
     return BlocConsumer<EventsCubit, EventsState>(
       listener: (context, state) {
-        if (state is TeamJoinSuccess) {
+        if (state.successMessage != null &&
+            state.successMessage!.toLowerCase().contains("join")) {
           // Close bottom sheet on success
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(state.successMessage!),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
             ),
           );
-        } else if (state is TeamJoinError) {
-          setState(() => _joiningTeamId = null);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(state.message),
-              backgroundColor: AppColors.error,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+        } else if (state.errorMessage != null &&
+            state.isOperationLoading == false) {
+          // We only want to show snackbar error for JOIN operation failure here.
+          // Ideally we should have a way to know WHICH operation failed, or clear errors.
+          // For now, if we are "joining" (local state not null) and error appears.
+          if (_joiningTeamId != null) {
+            setState(() => _joiningTeamId = null);
+            // Close bottom sheet before showing snackbar so it's visible
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.errorMessage!),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         }
       },
       builder: (context, state) {
@@ -121,13 +131,14 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
   }
 
   Widget _buildContent(EventsState state, ScrollController scrollController) {
-    // Loading State
-    if (state is PublicTeamsLoading) {
+    if (state.isOperationLoading && state.publicTeams.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
     // Error State
-    if (state is PublicTeamsError) {
+    if (state.errorMessage != null &&
+        state.publicTeams.isEmpty &&
+        !state.isOperationLoading) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
@@ -137,7 +148,7 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
               const Icon(Icons.error_outline, size: 64, color: AppColors.error),
               const SizedBox(height: AppSpacing.md),
               Text(
-                state.message,
+                state.errorMessage!,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
@@ -158,78 +169,90 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
       );
     }
 
-    // Loaded State
-    if (state is PublicTeamsLoaded) {
-      if (state.teams.isEmpty) {
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.groups_outlined,
-                  size: 64,
-                  color: AppColors.textMuted.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'No teams available yet',
-                  style: AppTextStyles.titleMedium,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  'Be the first to create one!',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppButton(
-                  text: 'Create Team',
-                  icon: Icons.group_add,
-                  isFullWidth: false,
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Close bottom sheet
-                    // Parent page will handle team creation
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-
-      return RefreshIndicator(
-        onRefresh: () async {
-          context.read<EventsCubit>().loadPublicTeams(widget.event.id);
-        },
-        child: ListView.builder(
-          controller: scrollController,
+    // Loaded State (or has cached data)
+    if (state.publicTeams.isEmpty) {
+      return Center(
+        child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
-          itemCount: state.teams.length,
-          itemBuilder: (context, index) {
-            final team = state.teams[index];
-            final isJoining = _joiningTeamId == team.id;
-
-            return TeamCard(
-              key: ValueKey(team.id),
-              team: team,
-              maxTeamSize: widget.event.maxTeamSize,
-              isLoading: isJoining,
-              onJoin: () {
-                setState(() => _joiningTeamId = team.id);
-                context.read<EventsCubit>().joinTeam(
-                  eventId: widget.event.id,
-                  teamId: team.id,
-                );
-              },
-            );
-          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.groups_outlined,
+                size: 64,
+                color: AppColors.textMuted.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text('No teams available yet', style: AppTextStyles.titleMedium),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Be the first to create one!',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppButton(
+                text: 'Create Team',
+                icon: Icons.group_add,
+                isFullWidth: false,
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close bottom sheet
+                  // Parent page will handle team creation
+                },
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return const SizedBox.shrink();
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<EventsCubit>().loadPublicTeams(widget.event.id);
+      },
+      child: ListView.builder(
+        controller: scrollController,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        itemCount: state.publicTeams.length,
+        itemBuilder: (context, index) {
+          final team = state.publicTeams[index];
+          final isJoining = _joiningTeamId == team.id; // Local state tracking
+
+          return TeamCard(
+            key: ValueKey(team.id),
+            team: team,
+            maxTeamSize: widget.event.maxTeamSize,
+            isLoading: isJoining && state.isOperationLoading,
+            onJoin: () {
+              setState(() => _joiningTeamId = team.id);
+              context.read<EventsCubit>().joinTeam(
+                eventId: widget.event.id,
+                teamId: team.id,
+              );
+            },
+            onViewDetails: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (sheetContext) => TeamDetailsBottomSheet(
+                  team: team,
+                  maxTeamSize: widget.event.maxTeamSize,
+                  isLoading: isJoining && state.isOperationLoading,
+                  onJoin: () {
+                    setState(() => _joiningTeamId = team.id);
+                    context.read<EventsCubit>().joinTeam(
+                      eventId: widget.event.id,
+                      teamId: team.id,
+                    );
+                  },
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 }

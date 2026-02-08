@@ -28,7 +28,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
     if (!await networkInfo.isConnected) {
@@ -41,7 +41,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
         mobile: mobile,
-        rollNo: rollNo,
+        collegeName: collegeName,
         imageUrl: imageUrl,
       );
 
@@ -153,6 +153,7 @@ class AuthRepositoryImpl implements AuthRepository {
     String? name,
     String? imageUrl,
     int? mobile,
+    String? collegeName,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure());
@@ -163,6 +164,7 @@ class AuthRepositoryImpl implements AuthRepository {
         name: name,
         imageUrl: imageUrl,
         mobile: mobile,
+        collegeName: collegeName,
       );
       await localDataSource.saveUser(user);
       return Right(user);
@@ -260,7 +262,6 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  @override
   Future<bool> isLoggedIn() async {
     return await localDataSource.isLoggedIn();
   }
@@ -319,7 +320,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
     if (!await networkInfo.isConnected) {
@@ -331,7 +332,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
         mobile: mobile,
-        rollNo: rollNo,
+        collegeName: collegeName,
         imageUrl: imageUrl,
       );
       return Right(response);

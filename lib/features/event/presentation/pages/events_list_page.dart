@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../components/components.dart';
+import '../../../../core/animations/app_animations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -10,8 +13,7 @@ import '../../domain/entities/event_entity.dart';
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 
-/// Events List Page - Premium UI with Slivers & Glassmorphism
-/// Fixed: Local state caching ensures events persist when navigating back from details.
+/// Events List Page - Optimized with Caching & Fixed Filters
 class EventsListPage extends StatefulWidget {
   const EventsListPage({super.key});
 
@@ -20,15 +22,25 @@ class EventsListPage extends StatefulWidget {
 }
 
 class _EventsListPageState extends State<EventsListPage> {
-  String? _selectedStatus; // Filter: 'UPCOMING', 'LIVE', 'COMPLETED'
-  String? _registeringEventId; // Track which event is being registered for
-  List<String> _registeredEventIds = []; // Track registered event IDs
+  String? _selectedDomain;
+  String? _registeringEventId;
+  List<String> _registeredEventIds = [];
   final ScrollController _scrollController = ScrollController();
 
-  // LOCAL STATE CACHING: Stores events to survive state changes from other pages
+  // Caching
   List<EventEntity>? _cachedEvents;
+  List<EventEntity>? _cachedFilteredEvents;
   bool _isLoading = true;
   String? _errorMessage;
+  int _filterChangeKey = 0;
+
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // Debouncing for search
+  DateTime? _lastSearchTime;
+  static const _searchDebounce = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -40,6 +52,7 @@ class _EventsListPageState extends State<EventsListPage> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -60,79 +73,169 @@ class _EventsListPageState extends State<EventsListPage> {
       context.push('/events/$eventId');
       return;
     }
-
     setState(() => _registeringEventId = eventId);
     context.read<EventsCubit>().registerForEvent(eventId);
+  }
+
+  /// Apply filters and search to cached events
+  List<EventEntity> _getFilteredEvents() {
+    if (_cachedEvents == null) return [];
+
+    var events = List<EventEntity>.from(_cachedEvents!);
+
+    // Apply domain filter
+    if (_selectedDomain != null && _selectedDomain!.isNotEmpty) {
+      events = events.where((e) {
+        return e.domainName.toLowerCase() == _selectedDomain!.toLowerCase();
+      }).toList();
+    }
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      events = events.where((e) {
+        return e.title.toLowerCase().contains(query) ||
+            e.domainName.toLowerCase().contains(query) ||
+            (e.description?.toLowerCase().contains(query) ?? false) ||
+            e.eventType.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Sort alphabetically by title
+    events.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
+    return events;
+  }
+
+  /// Handle search with debouncing
+  void _onSearchChanged(String value) {
+    _lastSearchTime = DateTime.now();
+
+    Future.delayed(_searchDebounce, () {
+      if (DateTime.now().difference(_lastSearchTime!) >= _searchDebounce) {
+        setState(() {
+          _searchQuery = value;
+          _cachedFilteredEvents = _getFilteredEvents();
+          _filterChangeKey++;
+        });
+      }
+    });
+  }
+
+  /// Handle domain filter change
+  void _onDomainFilterChanged(String? domain) {
+    setState(() {
+      _selectedDomain = domain;
+      _cachedFilteredEvents = _getFilteredEvents();
+      _filterChangeKey++;
+    });
+  }
+
+  /// Clear all filters
+  void _clearAllFilters() {
+    setState(() {
+      _selectedDomain = null;
+      _searchQuery = '';
+      _searchController.clear();
+      _cachedFilteredEvents = _getFilteredEvents();
+      _filterChangeKey++;
+      _loadEvents();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
-      body: BlocListener<EventsCubit, EventsState>(
-        listener: (context, state) {
-          // Handle events list loading states
-          if (state is EventsLoaded) {
-            setState(() {
-              _cachedEvents = state.events;
-              _isLoading = false;
-              _errorMessage = null;
-            });
-          }
+      body: ParticleBackground(
+        floatingElements: EffulgenceBackgroundElements.dense,
+        child: BlocListener<EventsCubit, EventsState>(
+          listener: (context, state) {
+            // Handle events loading success
+            if (state.status == EventsStatus.success) {
+              setState(() {
+                _cachedEvents = state.events;
+                _cachedFilteredEvents = _getFilteredEvents();
+                _isLoading = false;
+                _errorMessage = null;
+              });
+            }
 
-          if (state is EventsLoading) {
-            // Only show loading if we don't have cached data
-            if (_cachedEvents == null) {
+            // Handle events loading
+            if (state.isEventsLoading && _cachedEvents == null) {
               setState(() => _isLoading = true);
             }
-          }
 
-          if (state is EventsError) {
-            setState(() {
-              _isLoading = false;
-              _errorMessage = state.message;
-            });
-          }
+            // Handle error
+            if (state.errorMessage != null &&
+                !state.isEventsLoading &&
+                state.events.isEmpty) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = state.errorMessage;
+              });
+            }
 
-          // Handle registration states
-          if (state is EventRegistrationSuccess) {
-            _showSnackBar(state.message, AppColors.success);
-            setState(() => _registeringEventId = null);
-            _loadEvents();
-            _loadUserParticipations();
-          }
+            // Handle registration success
+            if (state.successMessage?.toLowerCase().contains("register") ==
+                true) {
+              _showSnackBar(state.successMessage!, AppColors.success);
+              setState(() => _registeringEventId = null);
+              _loadEvents();
+              _loadUserParticipations();
+            }
 
-          if (state is EventRegistrationError) {
-            _showSnackBar(state.message, AppColors.error);
-            setState(() => _registeringEventId = null);
-          }
+            // Handle participations loaded
+            if (!state.isParticipationsLoading &&
+                state.myParticipations.isNotEmpty) {
+              setState(() {
+                _registeredEventIds = state.myParticipations
+                    .map((e) => e.eventId)
+                    .toList();
+              });
+            }
 
-          // Handle participations states
-          if (state is MyParticipationsLoaded) {
-            setState(() {
-              _registeredEventIds = state.participations
-                  .map((participation) => participation.eventId)
-                  .toList();
-            });
-          }
-        },
-        child: RefreshIndicator(
-          onRefresh: () async {
-            _loadEvents();
-            _loadUserParticipations();
+            // Handle registration error
+            if (state.errorMessage != null && _registeringEventId != null) {
+              _showSnackBar(state.errorMessage!, AppColors.error);
+              setState(() => _registeringEventId = null);
+            }
           },
-          color: AppColors.primary,
-          backgroundColor: AppColors.bgSecondary,
-          child: CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              _buildSliverAppBar(),
-              SliverToBoxAdapter(child: _buildFilterSection()),
-              _buildEventsList(),
-              const SliverPadding(
-                padding: EdgeInsets.only(bottom: AppSpacing.xxl),
-              ),
-            ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _loadEvents();
+              _loadUserParticipations();
+            },
+            color: AppColors.primary,
+            backgroundColor: AppColors.bgSecondary,
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                _buildSliverAppBar(),
+                SliverToBoxAdapter(
+                  child: AppGlassSearchBar(
+                    controller: _searchController,
+                    hintText: 'Search events...',
+                    onChanged: _onSearchChanged,
+                    onClear: () {
+                      setState(() {
+                        _searchQuery = '';
+                        _cachedFilteredEvents = _getFilteredEvents();
+                        _filterChangeKey++;
+                      });
+                    },
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: _buildFilterSection()),
+                _buildEventsList(),
+                const SliverPadding(
+                  padding: EdgeInsets.only(bottom: AppSpacing.xxl),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -141,10 +244,10 @@ class _EventsListPageState extends State<EventsListPage> {
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
-      expandedHeight: 120.0,
+      expandedHeight: 140.0,
       floating: true,
       pinned: true,
-      backgroundColor: AppColors.bgPrimary.withValues(alpha: 0.8),
+      backgroundColor: Colors.transparent,
       actions: [
         Padding(
           padding: const EdgeInsets.only(right: AppSpacing.md),
@@ -159,49 +262,56 @@ class _EventsListPageState extends State<EventsListPage> {
       ],
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: AppSpacing.lg, bottom: 16),
-        title: ShaderMask(
-          shaderCallback: (bounds) =>
-              AppColors.primaryGradient.createShader(bounds),
-          child: Text(
-            'EVENTS',
-            style: AppTextStyles.headlineMedium.copyWith(
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 1.5,
-            ),
-          ),
-        ),
-        background: Stack(
-          children: [
-            Container(color: AppColors.bgPrimary),
-            Positioned(
-              top: -50,
-              right: -50,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      blurRadius: 60,
-                      spreadRadius: 20,
-                    ),
-                  ],
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomLeft,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'EVENTS',
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: AppColors.primary,
+                  letterSpacing: 2,
                 ),
               ),
+              Text(
+                'COMPETE & WIN',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+        background: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.bgPrimary.withValues(alpha: 0.9),
+                AppColors.bgPrimary.withValues(alpha: 0.0),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildFilterSection() {
-    final statuses = ['All', 'UPCOMING', 'LIVE', 'COMPLETED'];
-
+    final domains = [
+      'All',
+      'programming',
+      'robotics',
+      'entrepreneurial',
+      'miscellaneous',
+      'ESPORTS',
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
@@ -213,16 +323,15 @@ class _EventsListPageState extends State<EventsListPage> {
         height: 40,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          itemCount: statuses.length,
-          separatorBuilder: (context, index) =>
-              const SizedBox(width: AppSpacing.sm),
+          itemCount: domains.length,
+          separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
           itemBuilder: (context, index) {
-            final status = statuses[index];
+            final domain = domains[index];
             final isSelected =
-                (status == 'All' && _selectedStatus == null) ||
-                status == _selectedStatus;
-
-            return _buildFilterChip(status, isSelected);
+                (domain == 'All' && _selectedDomain == null) ||
+                (_selectedDomain != null &&
+                    domain.toLowerCase() == _selectedDomain!.toLowerCase());
+            return _buildFilterChip(domain, isSelected);
           },
         ),
       ),
@@ -232,39 +341,38 @@ class _EventsListPageState extends State<EventsListPage> {
   Widget _buildFilterChip(String label, bool isSelected) {
     return GestureDetector(
       onTap: () {
-        final newStatus = label == 'All' ? null : label;
-        if (newStatus != _selectedStatus) {
-          setState(() {
-            _selectedStatus = newStatus;
-            // Filter is applied locally in _buildEventsList using cached data
-          });
-          // No API call needed if we have updated cache logic
-        }
+        final newDomain = label == 'All' ? null : label;
+        _onDomainFilterChanged(newDomain);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.lg,
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.2)
-              : AppColors.bgSecondary,
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.25),
+                    AppColors.primary.withValues(alpha: 0.15),
+                  ],
+                )
+              : null,
+          color: isSelected ? null : AppColors.surface.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 1.5 : 1,
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
                 ]
-              : [],
+              : null,
         ),
         child: Center(
           child: Text(
@@ -272,7 +380,7 @@ class _EventsListPageState extends State<EventsListPage> {
             style: AppTextStyles.labelSmall.copyWith(
               color: isSelected ? AppColors.primary : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              letterSpacing: 1.0,
+              letterSpacing: 0.5,
             ),
           ),
         ),
@@ -285,11 +393,8 @@ class _EventsListPageState extends State<EventsListPage> {
     if (_isLoading && _cachedEvents == null) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => const Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
+          (_, __) => const Padding(
+            padding: EdgeInsets.all(8.0),
             child: ShimmerEventCard(),
           ),
           childCount: 5,
@@ -305,15 +410,8 @@ class _EventsListPageState extends State<EventsListPage> {
       );
     }
 
-    // CLIENT-SIDE FILTERING
-    var events = _cachedEvents ?? [];
-
-    // Apply status filter if one is selected
-    if (_selectedStatus != null) {
-      events = events
-          .where((event) => event.status == _selectedStatus)
-          .toList();
-    }
+    // Get filtered events from cache
+    final events = _cachedFilteredEvents ?? _getFilteredEvents();
 
     // Show empty state
     if (events.isEmpty) {
@@ -322,17 +420,11 @@ class _EventsListPageState extends State<EventsListPage> {
         child: EmptyState(
           icon: Icons.event_busy,
           title: 'No Events Found',
-          message: _selectedStatus != null
-              ? 'No events found with status "$_selectedStatus"'
-              : 'Check back later for upcoming events.',
-          actionLabel: 'Refresh',
-          onAction: () {
-            // Reset filter and load everyone
-            setState(() {
-              _selectedStatus = null;
-              _loadEvents();
-            });
-          },
+          message: _searchQuery.isNotEmpty || _selectedDomain != null
+              ? 'Try adjusting your filters'
+              : 'Stay tuned for more updates!',
+          actionLabel: 'Clear Filters',
+          onAction: _clearAllFilters,
         ),
       );
     }
@@ -341,51 +433,295 @@ class _EventsListPageState extends State<EventsListPage> {
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
         final event = events[index];
-        final isRegistering = _registeringEventId == event.id;
         final isRegistered = _registeredEventIds.contains(event.id);
+        final isRegistering = _registeringEventId == event.id;
 
         return Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
-          child: Hero(
-            tag: 'event_card_${event.id}',
-            child: EventCard(
-              title: event.title,
-              domain: event.domainName,
-              imageUrl: event.coverImage ?? '',
-              venue: event.venue,
-              dateTime: event.eventTime,
-              status: event.status,
-              showRegisterButton: true,
-              isRegistered: isRegistered,
-              isRegistering: isRegistering,
-              eventType: event.eventType,
-              onTap: () => context.push('/events/${event.id}'),
-              onRegister: event.canRegister && !isRegistered
-                  ? () => _handleRegistration(event.id, event.eventType)
-                  : null,
-            ),
+          child: SlideInAnimation(
+            key: ValueKey('${event.id}_$_filterChangeKey'),
+            duration: AppDurations.medium,
+            delay: Duration(milliseconds: index * 50),
+            beginOffset: const Offset(0, 0.2),
+            curve: AppCurves.easeIn,
+            child: _buildGlassEventCard(event, isRegistered, isRegistering),
           ),
         );
       }, childCount: events.length),
     );
   }
 
+  Widget _buildGlassEventCard(
+    EventEntity event,
+    bool isRegistered,
+    bool isRegistering,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 30,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => context.push('/events/${event.id}'),
+          splashColor: AppColors.primary.withValues(alpha: 0.1),
+          highlightColor: AppColors.primary.withValues(alpha: 0.05),
+          child: Column(
+            children: [
+              // Image Area with Caching
+              SizedBox(
+                height: 160,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (event.coverImage?.isNotEmpty ?? false)
+                      CachedNetworkImage(
+                        imageUrl: event.coverImage!,
+                        fit: BoxFit.cover,
+                        // Memory cache configuration
+                        memCacheHeight: 300,
+                        memCacheWidth: 600,
+                        // Aggressive caching
+                        maxHeightDiskCache: 400,
+                        maxWidthDiskCache: 800,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.bgSecondary.withValues(alpha: 0.5),
+                          child: Center(
+                            child: Image.asset(
+                              AppAssets.logoPng,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        errorWidget: (_, __, ___) =>
+                            Container(color: AppColors.bgSecondary),
+                      )
+                    else
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.bgSecondary,
+                              AppColors.bgPrimary,
+                            ],
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.event,
+                          color: AppColors.textMuted.withValues(alpha: 0.3),
+                          size: 60,
+                        ),
+                      ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.1),
+                            AppColors.bgSecondary.withValues(alpha: 0.95),
+                          ],
+                          stops: const [0.3, 1.0],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primary.withValues(alpha: 0.9),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          event.domainName.toUpperCase(),
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Content Area
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      style: AppTextStyles.titleLarge,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          event.eventTime.toString().split(' ')[0],
+                          style: AppTextStyles.bodySmall,
+                        ),
+                        const Spacer(),
+                        if (isRegistered)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusMd,
+                              ),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.4),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.success.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.verified_rounded,
+                                  size: 16,
+                                  color: AppColors.success,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'REGISTERED',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else if (event.canRegister)
+                          SizedBox(
+                            height: 34,
+                            child: ElevatedButton(
+                              onPressed: isRegistering
+                                  ? null
+                                  : () => _handleRegistration(
+                                      event.id,
+                                      event.eventType,
+                                    ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                ),
+                                elevation: 4,
+                                shadowColor: AppColors.primary.withValues(
+                                  alpha: 0.5,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: isRegistering
+                                  ? SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: Colors.black,
+                                        strokeCap: StrokeCap.round,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.how_to_reg, size: 16),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'REGISTER',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showSnackBar(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          message,
-          style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
-        ),
+        content: Text(message),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        margin: const EdgeInsets.all(AppSpacing.md),
       ),
     );
   }

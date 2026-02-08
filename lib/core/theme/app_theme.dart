@@ -166,10 +166,21 @@ class AppTheme {
 
       // Snackbar Theme
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.surfaceVariant,
-        contentTextStyle: AppTextStyles.bodyMedium,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        elevation: 12,
+        backgroundColor: AppColors.surfaceVariant,
+        contentTextStyle: AppTextStyles.bodyMedium.copyWith(
+          color: AppColors.textPrimary,
+        ),
+        actionTextColor: AppColors.primary,
+        disabledActionTextColor: AppColors.textPrimary,
+        showCloseIcon: true,
+        closeIconColor: AppColors.textPrimary,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppColors.borderLight),
+        ),
       ),
 
       // Tab Bar Theme

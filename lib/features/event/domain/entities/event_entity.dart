@@ -60,7 +60,7 @@ class EventEntity {
   String get domainName => domain;
   String get venue => eventVenue;
   int get registeredCount =>
-      0; // Backend will provide this data in future API updates
+      0; 
 }
 
 class TeamConfig {

@@ -13,7 +13,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   });
 
@@ -27,7 +27,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   });
 
@@ -48,6 +48,7 @@ abstract class AuthRepository {
     String? name,
     String? imageUrl,
     int? mobile,
+    String? collegeName,
   });
 
   /// Get all users (SUPER_ADMIN only)

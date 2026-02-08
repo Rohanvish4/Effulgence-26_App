@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
@@ -179,6 +181,16 @@ class ApiClient {
     }
   }
 
+  /// Stream controller for session expiration events
+  final _sessionExpiredController = StreamController<void>.broadcast();
+
+  /// Stream of session expiration events
+  Stream<void> get sessionExpiredStream => _sessionExpiredController.stream;
+
+  void dispose() {
+    _sessionExpiredController.close();
+  }
+
   /// Handle response errors based on status code
   AppException _handleResponseError(Response? response) {
     final statusCode = response?.statusCode;
@@ -186,13 +198,28 @@ class ApiClient {
 
     String message = 'An error occurred';
     if (data is Map<String, dynamic>) {
-      message = data['error'] ?? data['message'] ?? message;
+      final dynamic rawMessage = data['error'] ?? data['message'];
+      if (rawMessage is String && rawMessage.isNotEmpty) {
+        message = rawMessage;
+      } else if (rawMessage != null) {
+        message = jsonEncode(rawMessage);
+      }
     }
 
     switch (statusCode) {
       case 400:
         return ValidationException(message: message, statusCode: statusCode);
       case 401:
+        // Trigger session expiration event, unless it's a login or logout request
+        // Login: 401 means invalid credentials, handled by UI
+        // Logout: 401 means already logged out or invalid token, avoid infinite loop
+        final path = response?.requestOptions.path;
+        final isLogin = path?.endsWith(ApiConstants.login) ?? false;
+        final isLogout = path?.endsWith(ApiConstants.logout) ?? false;
+
+        if (!isLogin && !isLogout) {
+          _sessionExpiredController.add(null);
+        }
         return UnauthorizedException(message: message);
       case 403:
         return ForbiddenException(message: message);

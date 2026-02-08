@@ -1,6 +1,9 @@
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
 import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_edit_page.dart';
+import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_web_page.dart';
+import 'package:effulgence26_mobile_app/features/contact/presentation/pages/contact_us_page.dart';
+import 'package:effulgence26_mobile_app/features/about/presentation/pages/about_effulgence_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -9,6 +12,13 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/event/presentation/pages/event_details_page.dart';
 import 'features/event/presentation/pages/my_events_page.dart';
+import 'features/sponsors/presentation/pages/sponsors_list_page.dart';
+import 'features/sponsors/presentation/pages/sponsor_booth_page.dart';
+import 'features/sponsors/presentation/cubit/sponsors_cubit.dart';
+import 'features/sponsors/presentation/cubit/sponsors_state.dart';
+import 'features/qrcode/presentation/pages/qrcode_page.dart';
+import 'features/qrcode/presentation/pages/qr_scanner_page.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// App router configuration using GoRouter
 /// GoRouter handles navigation and automatically redirects based on authentication state
@@ -95,7 +105,7 @@ class AppRouter {
       GoRoute(
         path: "/editUserDetails",
         name: "editUserDetails",
-        builder: (context, state) => const UserProfileEditPage()
+        builder: (context, state) => const UserProfileEditPage(),
       ),
       GoRoute(
         path: '/register',
@@ -119,8 +129,11 @@ class AppRouter {
       //     return const AdminEventsPage();
       //   },
       // ),
-
-     
+      GoRoute(
+        path: '/admin',
+        name: 'admin',
+        builder: (context, state) => const AdminWebPage(),
+      ),
       GoRoute(
         path: '/events',
         name: 'events',
@@ -142,11 +155,68 @@ class AppRouter {
         name: 'myEvents',
         builder: (context, state) => const MyEventsPage(),
       ),
-     
-      // Future x Routes
-     
-    
 
+      // Sponsors Routes
+      GoRoute(
+        path: '/sponsors',
+        name: 'sponsors',
+        builder: (context, state) => const SponsorsListPage(),
+      ),
+
+      GoRoute(
+        path: '/sponsors/:id',
+        name: 'sponsorBooth',
+        builder: (context, state) {
+          final sponsorId = state.pathParameters['id']!;
+
+          // Get sponsor from cubit state
+          return BlocBuilder<SponsorsCubit, SponsorsState>(
+            builder: (context, sponsorState) {
+              if (sponsorState is SponsorsLoaded) {
+                final sponsor = sponsorState.sponsors.firstWhere(
+                  (s) => s.id == sponsorId,
+                  orElse: () => throw Exception('Sponsor not found'),
+                );
+                return SponsorBoothPage(sponsor: sponsor);
+              }
+              // If sponsors not loaded yet, show loading
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            },
+          );
+        },
+      ),
+
+      // QR Code Route
+      GoRoute(
+        path: '/qrcode',
+        name: 'qrcode',
+        builder: (context, state) => const QrCodePage(),
+      ),
+
+      // QR Scanner Route (Admin)
+      GoRoute(
+        path: '/qr-scanner',
+        name: 'qrScanner',
+        builder: (context, state) => const QrScannerPage(),
+      ),
+
+      // Contact Us Route
+      GoRoute(
+        path: '/contact',
+        name: 'contact',
+        builder: (context, state) => const ContactUsPage(),
+      ),
+
+      // About Effulgence Route
+      GoRoute(
+        path: '/about',
+        name: 'about',
+        builder: (context, state) => const AboutEffulgencePage(),
+      ),
+
+      // Future x Routes
     ],
 
     // Error page for invalid routes

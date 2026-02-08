@@ -1,8 +1,10 @@
+import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/entities/event_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../components/components.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -12,7 +14,7 @@ import '../cubit/events_state.dart';
 import '../widgets/public_teams_bottom_sheet.dart';
 import '../widgets/team_creation_dialog.dart';
 
-/// Event Details Page - Premium UI with Hero Animation & Glassmorphism
+/// Event Details Page - Redesigned with Particle Background & Glassmorphism
 class EventDetailsPage extends StatefulWidget {
   final String eventId;
 
@@ -42,65 +44,93 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: BlocConsumer<EventsCubit, EventsState>(
-        listener: (context, state) {
-          if (state is EventDetailsLoaded) {
-            setState(() => _event = state.event);
-          } else if (state is EventRegistrationSuccess) {
-            _showSnackBar(state.message, AppColors.success);
-            _loadData(); // Refresh data
-          } else if (state is EventRegistrationError) {
-            _showSnackBar(state.message, AppColors.error);
-          } else if (state is TeamCreationSuccess) {
-            if (_isDialogVisible) {
-              Navigator.of(context).pop(); // Close dialog on success
-              _isDialogVisible = false;
+      body: ParticleBackground(
+        child: BlocConsumer<EventsCubit, EventsState>(
+          listener: (context, state) {
+            // Event Details Loaded
+            if (state.selectedEvent != null) {
+              setState(() => _event = state.selectedEvent);
             }
-            _showSnackBar(state.message, AppColors.success);
-            _loadData(); // Refresh data
-          } else if (state is TeamCreationError) {
-            // Keep dialog open on error so user can retry/fix
-            _showSnackBar(state.message, AppColors.error);
-          } else if (state is MyParticipationsLoaded) {
-            setState(() {
-              _registeredEventIds = state.participations
-                  .map((p) => p.eventId)
-                  .toList();
-            });
-          }
-        },
-        builder: (context, state) {
-          if (state is EventDetailsLoading && _event == null) {
-            return const FullScreenLoading(message: 'Loading event details...');
-          }
 
-          if (state is EventDetailsError && _event == null) {
-            return Scaffold(
-              appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-              body: ErrorState(message: state.message, onRetry: _loadData),
-            );
-          }
+            // Success Messages
+            if (state.successMessage != null) {
+              _showSnackBar(state.successMessage!, AppColors.success);
 
-          final event = _event;
-          if (event != null) {
-            return RefreshIndicator(
-              onRefresh: () async => _loadData(),
-              color: AppColors.primary,
-              backgroundColor: AppColors.bgSecondary,
-              child: CustomScrollView(
-                slivers: [
-                  _buildSliverAppBar(event),
-                  SliverToBoxAdapter(
-                    child: _buildContent(context, event, state),
-                  ),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-                ],
-              ),
-            );
-          }
+              // Handle Team Creation Success - Close Dialog
+              if (state.successMessage!.toLowerCase().contains(
+                    'team created',
+                  ) &&
+                  _isDialogVisible) {
+                Navigator.of(context).pop();
+                _isDialogVisible = false;
+              }
 
-          return const SizedBox.shrink();
-        },
+              _loadData(); // Refresh data
+            }
+
+            // Error Messages
+            if (state.errorMessage != null &&
+                !state.isEventsLoading &&
+                !state.isDetailsLoading &&
+                !state.isOperationLoading) {
+              if (_event != null) {
+                _showSnackBar(state.errorMessage!, AppColors.error);
+              }
+            }
+
+            // My Participations Loaded
+            if (state.myParticipations.isNotEmpty ||
+                (!state.isParticipationsLoading &&
+                    state.myParticipations.isEmpty)) {
+              setState(() {
+                _registeredEventIds = state.myParticipations
+                    .map((p) => p.eventId)
+                    .toList();
+              });
+            }
+          },
+          builder: (context, state) {
+            if (state.isDetailsLoading && _event == null) {
+              return const FullScreenLoading(
+                message: 'Loading event details...',
+              );
+            }
+
+            if (state.errorMessage != null && _event == null) {
+              return Scaffold(
+                backgroundColor: Colors.transparent,
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                ),
+                body: ErrorState(
+                  message: state.errorMessage!,
+                  onRetry: _loadData,
+                ),
+              );
+            }
+
+            final event = _event;
+            if (event != null) {
+              return RefreshIndicator(
+                onRefresh: () async => _loadData(),
+                color: AppColors.primary,
+                backgroundColor: AppColors.bgSecondary,
+                child: CustomScrollView(
+                  slivers: [
+                    _buildSliverAppBar(event),
+                    SliverToBoxAdapter(
+                      child: _buildContent(context, event, state),
+                    ),
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                  ],
+                ),
+              );
+            }
+
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
@@ -110,7 +140,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       expandedHeight: 300,
       pinned: true,
       stretch: true,
-      backgroundColor: AppColors.bgPrimary,
+      backgroundColor: Colors.transparent,
       leading: Container(
         margin: const EdgeInsets.all(8),
         decoration: BoxDecoration(
@@ -137,10 +167,9 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                           Container(color: AppColors.bgSecondary),
                       errorWidget: (context, url, error) => Container(
                         color: AppColors.bgSecondary,
-                        child: const Icon(
-                          Icons.image_not_supported,
-                          color: AppColors.textMuted,
-                          size: 50,
+                        child: Image.asset(
+                          AppAssets.logoPng,
+                          fit: BoxFit.cover,
                         ),
                       ),
                     )
@@ -194,24 +223,49 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs,
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.1),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.secondary.withValues(alpha: 0.2),
+                            AppColors.secondary.withValues(alpha: 0.1),
+                          ],
+                        ),
                         borderRadius: BorderRadius.circular(
                           AppSpacing.radiusSm,
                         ),
                         border: Border.all(
-                          color: AppColors.secondary.withValues(alpha: 0.5),
+                          color: AppColors.secondary.withValues(alpha: 0.6),
+                          width: 1.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.secondary.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        event.eventType,
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            event.isTeam ? Icons.groups : Icons.person,
+                            size: 16,
+                            color: AppColors.secondary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            event.eventType,
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -245,15 +299,40 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           // Description
           if (event.description != null && event.description!.isNotEmpty) ...[
             _buildSectionTitle('About Event'),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              event.description!,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-                height: 1.6,
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.bgSecondary.withValues(alpha: 0.6),
+                    AppColors.bgSecondary.withValues(alpha: 0.4),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(
+                  color: AppColors.border.withValues(alpha: 0.5),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Text(
+                event.description!,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.7,
+                  letterSpacing: 0.2,
+                ),
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.xxl),
           ],
 
           // Rules
@@ -314,7 +393,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           icon: Icons.timer_outlined,
           title: 'Deadline',
           value: event.registrationDeadline.formattedDateTime,
-          color: AppColors.amberGold,
+          color: AppColors.secondary,
           isFullWidth: true,
         ),
         if (event.isTeam) ...[
@@ -338,14 +417,27 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     required Color color,
     bool isFullWidth = false,
   }) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       width: isFullWidth ? double.infinity : null,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary.withValues(alpha: 0.6),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.bgSecondary.withValues(alpha: 0.7),
+            AppColors.bgSecondary.withValues(alpha: 0.5),
+          ],
+        ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
@@ -359,29 +451,45 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [
+                      color.withValues(alpha: 0.2),
+                      color.withValues(alpha: 0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 22),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                title.toUpperCase(),
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.textMuted,
-                  fontSize: 10,
-                  letterSpacing: 1.0,
+              Expanded(
+                child: Text(
+                  title.toUpperCase(),
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.textMuted,
+                    fontSize: 10,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           Text(
             value,
             style: AppTextStyles.bodyMedium.copyWith(
               fontWeight: FontWeight.w600,
+              height: 1.4,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -410,19 +518,46 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       return Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.1),
+          gradient: LinearGradient(
+            colors: [
+              AppColors.success.withValues(alpha: 0.15),
+              AppColors.success.withValues(alpha: 0.08),
+            ],
+          ),
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: AppColors.success.withValues(alpha: 0.4),
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.success.withValues(alpha: 0.2),
+              blurRadius: 15,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, color: AppColors.success),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+                size: 24,
+              ),
+            ),
             const SizedBox(width: AppSpacing.md),
             Text(
               'You are registered!',
               style: AppTextStyles.titleMedium.copyWith(
                 color: AppColors.success,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -436,7 +571,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           GradientButton(
             text: 'CREATE TEAM & REGISTER',
             icon: Icons.group_add,
-            isLoading: state is TeamCreationLoading,
+            isLoading: state.isOperationLoading,
             onPressed: () {
               _showTeamCreationDialog(context, event.id);
               setState(() {});
@@ -455,7 +590,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     return GradientButton(
       text: 'REGISTER NOW',
       icon: Icons.how_to_reg,
-      isLoading: state is EventRegistrationLoading,
+      isLoading: state.isOperationLoading,
       onPressed: () {
         context.read<EventsCubit>().registerForEvent(event.id);
       },
@@ -466,15 +601,35 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     return Row(
       children: [
         Container(
-          width: 4,
-          height: 24,
+          width: 5,
+          height: 28,
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(2),
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withValues(alpha: 0.6),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(3),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(title, style: AppTextStyles.titleLarge),
+        const SizedBox(width: AppSpacing.md),
+        Text(
+          title,
+          style: AppTextStyles.titleLarge.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
       ],
     );
   }

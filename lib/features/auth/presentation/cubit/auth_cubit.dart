@@ -37,7 +37,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
     debugPrint('AuthCubit: Starting registration for $email');
@@ -47,7 +47,7 @@ class AuthCubit extends Cubit<AuthState> {
       email: email,
       password: password,
       mobile: mobile,
-      rollNo: rollNo,
+      collegeName: collegeName,
       imageUrl: imageUrl,
     );
     result.fold(
@@ -109,7 +109,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String email,
     required String password,
     required int mobile,
-    required int rollNo,
+    required String collegeName,
     String? imageUrl,
   }) async {
     debugPrint('AuthCubit: Resending OTP for $email');
@@ -119,7 +119,7 @@ class AuthCubit extends Cubit<AuthState> {
       email: email,
       password: password,
       mobile: mobile,
-      rollNo: rollNo,
+      collegeName: collegeName,
       imageUrl: imageUrl,
     );
     result.fold(
@@ -166,6 +166,7 @@ class AuthCubit extends Cubit<AuthState> {
     String? name,
     String? imageUrl,
     int? mobile,
+    String? collegeName,
   }) async {
     emit(AuthLoading());
 
@@ -173,6 +174,7 @@ class AuthCubit extends Cubit<AuthState> {
       name: name,
       imageUrl: imageUrl,
       mobile: mobile,
+      collegeName: collegeName,
     );
 
     result.fold(

@@ -5,91 +5,180 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'core/theme/app_theme.dart';
+import 'core/theme/app_colors.dart';
+import 'core/theme/app_text_styles.dart';
+import 'core/services/update_service.dart';
+import 'features/update/presentation/pages/update_required_page.dart';
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List>(
-      future: _initializeApp(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const MaterialApp(home: EffulgenceSplashScreen());
-        }
+  State<MyApp> createState() => _MyAppState();
+}
 
-        if (snapshot.hasError) {
-          return MaterialApp(
-            home: Scaffold(
-              backgroundColor: const Color(0xFF0F172A),
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Color(0xFFEF4444),
-                      size: 64,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'ERROR INITIALIZING',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${snapshot.error}',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+class _MyAppState extends State<MyApp> {
+  late Future<List<SingleChildWidget>> _providersFuture;
+  final UpdateService _updateService = UpdateService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-cache local data here if necessary before providers load
+    _providersFuture = _initializeApp();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<SingleChildWidget>>(
+      future: _providersFuture,
+      builder: (context, snapshot) {
+        // 1. Connectivity-Aware Loading State
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: EffulgenceSplashScreen(),
           );
         }
 
-        final providers = snapshot.data as List<SingleChildWidget>;
-        return MultiProvider(
-          providers: providers,
-          child: Builder(
-            builder: (context) {
-              final authCubit = context.read<AuthCubit>();
-              final appRouter = AppRouter(authCubit: authCubit);
-              return MaterialApp.router(
-                title: 'Effulgence 26',
-                theme: ThemeData(
-                  colorScheme: ColorScheme.fromSeed(
-                    seedColor: Colors.deepPurple,
-                  ),
-                  useMaterial3: true,
-                ),
-                routerConfig: appRouter.router,
-              );
-            },
-          ),
-        );
+        // 2. Handle Errors (including Forced Update)
+        if (snapshot.hasError) {
+          if (snapshot.error is UpdateRequiredException) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.darkTheme,
+              home: UpdateRequiredPage(updateService: _updateService),
+            );
+          }
+          return _buildGlobalErrorBuilder(snapshot.error.toString());
+        }
+
+        final providers = snapshot.data ?? [];
+
+        return MultiProvider(providers: providers, child: const _AppContent());
       },
     );
   }
 
   Future<List<SingleChildWidget>> _initializeApp() async {
-    // Start both the providers initialization and the splash delay simultaneously
-    final providersFuture = AppProviders.getProviders();
-    final splashDelay = Future.delayed(const Duration(seconds: 1));
+    try {
+      // Initialize Update Service early
+      await _updateService.initialize();
 
-    // Wait for both to complete
-    await Future.wait([providersFuture, splashDelay]);
+      // Check for forced update
+      if (await _updateService.isUpdateRequired()) {
+        throw UpdateRequiredException();
+      }
 
-    // Return the providers
-    return providersFuture;
+      // Parallel execution for speed
+      final results = await Future.wait([
+        AppProviders.getProviders(),
+        // 2G Optimization, Minimum splash duration to allow local DBs to open
+        Future.delayed(const Duration(milliseconds: 800)),
+      ]);
+
+      return results[0] as List<SingleChildWidget>;
+    } catch (e) {
+      if (e is UpdateRequiredException) {
+        rethrow; // Pass update exception through
+      }
+      // Log error to Sentry/Firebase here
+      rethrow;
+    }
+  }
+
+  Widget _buildGlobalErrorBuilder(String error) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      home: Scaffold(
+        backgroundColor: AppColors.bgPrimary,
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.wifi_off_rounded,
+                  color: AppColors.textMuted,
+                  size: 48,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'CONNECTION STRETCHED',
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'We\'re having trouble reaching the server. Check your 2G/3G connection.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => setState(() {
+                    _providersFuture = _initializeApp();
+                  }),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                  ),
+                  child: const Text(
+                    'RETRY INITIALIZATION',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class UpdateRequiredException implements Exception {}
+
+class _AppContent extends StatefulWidget {
+  const _AppContent();
+
+  @override
+  State<_AppContent> createState() => _AppContentState();
+}
+
+class _AppContentState extends State<_AppContent> {
+  // Use a singleton-like pattern or late init for the router to survive re-builds
+  late final AppRouter _appRouter;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize router with the existing AuthCubit
+    _appRouter = AppRouter(authCubit: context.read<AuthCubit>());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'Effulgence 26',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.darkTheme,
+      // Production Optimization, Ensure the router handles deep links and redirects
+      routerConfig: _appRouter.router,
+      // Global builder for handling 2G Image loading issues
+      builder: (context, child) {
+        return ScrollConfiguration(
+          behavior: const ScrollBehavior().copyWith(
+            physics: const BouncingScrollPhysics(),
+          ),
+          child: child!,
+        );
+      },
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+// ignore: must_be_immutable
 class ExpandableShowWidget extends StatefulWidget {
   Widget child;
   Widget showMore;
@@ -18,9 +19,9 @@ class _ExpandableShowWidgetState extends State<ExpandableShowWidget> {
       children: [
         Container(
           alignment: Alignment.center,
-          child:Container(
+          child: Container(
             alignment: Alignment.center,
-            child:  GestureDetector(
+            child: GestureDetector(
               onTap: () {
                 setState(() {
                   _isExpanded = !_isExpanded;
@@ -45,10 +46,7 @@ class _ExpandableShowWidgetState extends State<ExpandableShowWidget> {
           curve: Curves.easeInOut,
           height: _isExpanded ? 200.0 : 0.0,
           child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(16.0),
-              child: widget.child,
-            ),
+            child: Padding(padding: EdgeInsets.all(16.0), child: widget.child),
           ),
         ),
       ],

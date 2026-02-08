@@ -1,164 +1,158 @@
 import 'package:flutter/material.dart';
 
-/// Effulgence'26 Design System Colors
-/// Strategic Theme:  "Innovation and Beyond" - Dark Futuristic Tech Conference Aesthetic
+/// Effulgence'26 Design System - Titanium & Emerald Edition
+/// A premium, non-blue aesthetic focusing on slate-metal and precision greens.
 class AppColors {
   AppColors._();
 
   // ═══════════════════════════════════════════════════════════════
-  // CORE BACKGROUNDS (Design Tokens from Requirements)
+  // CORE BACKGROUNDS (Deep Charcoal & Gunmetal)
   // ═══════════════════════════════════════════════════════════════
-  static const Color bgPrimary = Color(0xFF0B0E11); // Main scaffold
-  static const Color bgSecondary = Color(0xFF12161C); // Cards, sheets
-  static const Color bgOverlay = Color(0xFF1C1F26); // Dialogs, modals
+  static const Color bgPrimary = Color(0xFF0C0D0F); // Near-black matte
+  static const Color bgSecondary = Color(0xFF16181D); // Gunmetal surface
+  static const Color bgOverlay = Color(0xFF1F2229); // Elevated slate
 
-  // Legacy aliases for compatibility
   static const Color background = bgPrimary;
   static const Color backgroundSecondary = bgSecondary;
   static const Color backgroundTertiary = bgOverlay;
   static const Color surface = bgSecondary;
-  static const Color surfaceVariant = Color(0xFF23272F);
+  static const Color surfaceVariant = Color(0xFF282C34);
 
-  // ═══════════════════════════════════════��═══════════════════════
-  // ACCENT PALETTE (Brush-Stroke Identity from Brochure)
   // ═══════════════════════════════════════════════════════════════
-  static const Color innovationGreen = Color(0xFF2ECC71); // Vision, Success
-  static const Color electricBlue = Color(0xFF3A6DFF); // Coding, Software
-  static const Color crimsonRed = Color(0xFFE74C3C); // Robotics, E-sports
-  static const Color royalPurple = Color(0xFF9B59B6); // Core Engineering
-  static const Color amberGold = Color(0xFFF1C40F); // Timeline, Highlights
-  static const Color cyanTeal = Color(0xFF1ABC9C); // Overview, Stats
+  // ACCENT PALETTE (Emerald & Industrial Tones)
+  // ═══════════════════════════════════════════════════════════════
+  static const Color innovationGreen = Color.fromRGBO(
+    45,
+    212,
+    191,
+    1,
+  ); // Primary Brand
+  static const Color electricBlue = Color(0xFF34D399); // Swapped to Mint-Green
+  static const Color crimsonRed = Color(0xFFFB7185); // Soft Rose-Red
+  static const Color royalPurple = Color(0xFFA78BFA); // Soft Lavender
+  static const Color cyanTeal = Color(0xFF06B6D4); // Cyber Cyan
 
-  // Primary accent (default action color)
-  static const Color primary = amberGold; // Changed from orange
-  static const Color primaryLight = Color(0xFFF4D03F);
-  static const Color primaryDark = Color(0xFFD4AC0D);
+  // Primary accent (Now a High-Precision Green/Teal)
+  static const Color primary = innovationGreen;
+  static const Color primaryLight = Color(0xFF99F6E4);
+  static const Color primaryDark = Color(0xFF0D9488);
 
-  // Secondary accent
-  static const Color secondary = cyanTeal;
-  static const Color secondaryLight = Color(0xFF48C9B0);
-  static const Color secondaryDark = Color(0xFF17A589);
+  // Secondary accent (Deep Mint)
+  static const Color secondary = Color(0xFF10B981);
+  static const Color secondaryLight = Color(0xFF6EE7B7);
+  static const Color secondaryDark = Color(0xFF064E3B);
 
   // Tertiary accent
-  static const Color accent = electricBlue;
-  static const Color accentLight = Color(0xFF5B8AFF);
-  static const Color accentDark = Color(0xFF2952CC);
+  static const Color accent = royalPurple;
+  static const Color accentLight = Color(0xFFC4B5FD);
+  static const Color accentDark = Color(0xFF6D28D9);
 
   // ═══════════════════════════════════════════════════════════════
-  // TEXT COLORS (High Contrast for Dark UI)
+  // TEXT COLORS (Calibrated for Dark UI)
   // ═══════════════════════════════════════════════════════════════
-  static const Color textPrimary = Color(0xFFFFFFFF); // Headlines
-  static const Color textSecondary = Color(0xFFD0D3D8); // Body
-  static const Color textMuted = Color(0xFF8A8F98); // Metadata
-  static const Color textDisabled = Color(0xFF4B5563);
+  static const Color textPrimary = Color(0xFFF1F5F9);
+  static const Color textSecondary = Color(0xFF94A3B8); // Slate
+  static const Color textMuted = Color(0xFF64748B); // Muted Slate
+  static const Color textDisabled = Color(0xFF334155);
   static const Color textTertiary = textMuted;
 
   // ═══════════════════════════════════════════════════════════════
   // STATUS COLORS (Semantic States)
   // ═══════════════════════════════════════════════════════════════
   static const Color success = innovationGreen;
-  static const Color successLight = Color(0xFF58D68D);
-  static const Color successDark = Color(0xFF27AE60);
+  static const Color successLight = Color(0xFF5EEAD4);
+  static const Color successDark = Color(0xFF134E4A);
 
-  static const Color warning = amberGold;
-  static const Color warningLight = Color(0xFFF4D03F);
-  static const Color warningDark = Color(0xFFD4AC0D);
+  static const Color warning = Color(0xFFFBBF24);
+  static const Color warningLight = Color(0xFFFDE68A);
+  static const Color warningDark = Color(0xFF92400E);
 
   static const Color error = crimsonRed;
-  static const Color errorLight = Color(0xFFEC7063);
-  static const Color errorDark = Color(0xFFC0392B);
+  static const Color errorLight = Color(0xFFFDA4AF);
+  static const Color errorDark = Color(0xFF9F1239);
 
-  static const Color info = electricBlue;
-  static const Color infoLight = Color(0xFF5B8AFF);
-  static const Color infoDark = Color(0xFF2952CC);
+  static const Color info = Color(0xFF38BDF8); // Soft Sky (Secondary Info)
+  static const Color infoLight = Color(0xFF7DD3FC);
+  static const Color infoDark = Color(0xFF0369A1);
 
   // ═══════════════════════════════════════════════════════════════
-  // EVENT STATUS COLORS (from original - kept for compatibility)
+  // EVENT STATUS COLORS
   // ═══════════════════════════════════════════════════════════════
   static const Color eventLive = innovationGreen;
-  static const Color eventUpcoming = electricBlue;
-  static const Color eventCompleted = Color(0xFF6B7280);
+  static const Color eventUpcoming = Color(0xFF818CF8); // Indigo-slate
+  static const Color eventCompleted = Color(0xFF475569);
 
   // ═══════════════════════════════════════════════════════════════
   // BORDERS & DIVIDERS
   // ═══════════════════════════════════════════════════════════════
-  static const Color border = Color(0xFF2A2E36);
-  static const Color borderLight = Color(0xFF3F444D);
-  static const Color borderFocused = amberGold;
-  static const Color divider = Color(0xFF2A2E36);
+  static const Color border = Color(0xFF2D323A);
+  static const Color borderLight = Color(0xFF3E444E);
+  static const Color borderFocused = primary;
+  static const Color divider = Color(0xFF1E2127);
 
   // ═══════════════════════════════════════════════════════════════
   // OVERLAY & EFFECTS
   // ═══════════════════════════════════════════════════════════════
-  static const Color overlay = Color(0xCC000000); // 80% opacity
-  static const Color shimmerBase = bgSecondary;
-  static const Color shimmerHighlight = surfaceVariant;
+  static const Color overlay = Color(0xCC050506);
+  static const Color shimmerBase = Color(0xFF1A1D23);
+  static const Color shimmerHighlight = Color(0xFF2D323A);
 
   // ═══════════════════════════════════════════════════════════════
-  // GRADIENTS (Brush-Stroke Headers)
+  // GRADIENTS (Titanium & Emerald Finishes)
   // ═══════════════════════════════════════════════════════════════
 
-  /// Amber Gold Gradient (Timeline, Highlights)
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFFF39C12), Color(0xFFF1C40F), Color(0xFFFDED72)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF0F766E), Color(0xFF2DD4BF)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  /// Cyan Teal Gradient (Overview, Stats)
   static const LinearGradient secondaryGradient = LinearGradient(
-    colors: [Color(0xFF16A085), Color(0xFF1ABC9C), Color(0xFF48C9B0)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF065F46), Color(0xFF10B981)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  /// Crimson Red Gradient (Robotics, Alerts)
   static const LinearGradient crimsonGradient = LinearGradient(
-    colors: [Color(0xFFC0392B), Color(0xFFE74C3C), Color(0xFFEC7063)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF9F1239), Color(0xFFFB7185)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  /// Electric Blue Gradient (Coding, Software)
   static const LinearGradient blueGradient = LinearGradient(
-    colors: [Color(0xFF2952CC), Color(0xFF3A6DFF), Color(0xFF5B8AFF)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF1E293B), Color(0xFF64748B)], // Titanium Metallic
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  /// Royal Purple Gradient (Core Engineering)
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF7D3C98), Color(0xFF9B59B6), Color(0xFFBB8FCE)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
+    colors: [Color(0xFF5B21B6), Color(0xFFA78BFA)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
   );
 
-  /// Innovation Green Gradient (Vision, Success)
-  static const LinearGradient greenGradient = LinearGradient(
-    colors: [Color(0xFF27AE60), Color(0xFF2ECC71), Color(0xFF58D68D)],
-    begin: Alignment.centerLeft,
-    end: Alignment.centerRight,
-  );
+  static const LinearGradient greenGradient = primaryGradient;
 
-  /// Background gradient for screens
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [bgPrimary, bgSecondary, bgOverlay],
+    colors: [bgPrimary, Color(0xFF111827)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
 
-  /// Card depth gradient
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF1A1E26), Color(0xFF12161C)],
+    colors: [Color(0xFF1E232B), Color(0xFF12151A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   // ═══════════════════════════════════════════════════════════════
-  // GLOW EFFECTS (Futuristic Depth)
+  // GLOW EFFECTS (Soft Mint Diffusion)
   // ═══════════════════════════════════════════════════════════════
 
-  static List<BoxShadow> primaryGlow({double opacity = 0.3, double blur = 12}) {
+  static List<BoxShadow> primaryGlow({
+    double opacity = 0.12,
+    double blur = 24,
+  }) {
     return [
       BoxShadow(
         color: primary.withValues(alpha: opacity),
@@ -171,8 +165,8 @@ class AppColors {
 
   static List<BoxShadow> accentGlow(
     Color color, {
-    double opacity = 0.4,
-    double blur = 16,
+    double opacity = 0.15,
+    double blur = 18,
   }) {
     return [
       BoxShadow(
@@ -184,13 +178,13 @@ class AppColors {
     ];
   }
 
-  static List<BoxShadow> cardElevation({double opacity = 0.2}) {
+  static List<BoxShadow> cardElevation({double opacity = 0.5}) {
     return [
       BoxShadow(
         color: Colors.black.withValues(alpha: opacity),
-        blurRadius: 16,
-        spreadRadius: -4,
-        offset: const Offset(0, 8),
+        blurRadius: 25,
+        spreadRadius: -8,
+        offset: const Offset(0, 12),
       ),
     ];
   }

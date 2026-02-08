@@ -34,7 +34,7 @@ class _TeamCreationDialogContentState extends State<TeamCreationDialogContent> {
   Widget build(BuildContext context) {
     return BlocBuilder<EventsCubit, EventsState>(
       builder: (context, state) {
-        final isLoading = state is TeamCreationLoading;
+        final isLoading = state.isOperationLoading;
 
         return AlertDialog(
           backgroundColor: AppColors.bgSecondary,
@@ -175,10 +175,13 @@ class _TeamCreationDialogContentState extends State<TeamCreationDialogContent> {
               onPressed: () {
                 final teamName = widget.teamNameController.text.trim();
                 if (teamName.isEmpty) {
+                  // Close dialog before showing snackbar so it's visible
+                  widget.onClose();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please enter a team name'),
                       backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
                     ),
                   );
                   return;

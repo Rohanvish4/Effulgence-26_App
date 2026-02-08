@@ -3,7 +3,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Base URL - Change this based on environment
-  static const String baseUrl = 'https://api.effulgence26.live/';
+  static const String baseUrl = 'https://api.effulgence26.in/';
 
   // API Endpoints
   static const String health = '/health';
@@ -19,6 +19,10 @@ class ApiConstants {
   // Profile Endpoints
   static const String profile = '/user/profile';
   static const String profileEdit = '/user/profile/edit';
+
+  // QR Code
+  static const String qrCode = '/user/qrcode';
+  static const String verifyQrCode = '/user/qrcode/verify';
 
   // Events Endpoints
   // GET /events - Get all events (public)

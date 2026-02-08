@@ -9,7 +9,9 @@ class CreateEventParams {
   final String eventType;
   final String eventVenue;
   final DateTime eventTime;
+  final DateTime endTime;
   final DateTime registrationDeadline;
+  final int eventRound;
   final TeamConfig? teamConfig;
 
   const CreateEventParams({
@@ -20,7 +22,9 @@ class CreateEventParams {
     required this.eventType,
     required this.eventVenue,
     required this.eventTime,
+    required this.endTime,
     required this.registrationDeadline,
+    this.eventRound = 1,
     this.teamConfig,
   });
 }
@@ -34,7 +38,9 @@ class UpdateEventParams {
   final String? eventType;
   final String? eventVenue;
   final DateTime? eventTime;
+  final DateTime? endTime;
   final DateTime? registrationDeadline;
+  final int? eventRound;
   final TeamConfig? teamConfig;
 
   const UpdateEventParams({
@@ -45,7 +51,9 @@ class UpdateEventParams {
     this.eventType,
     this.eventVenue,
     this.eventTime,
+    this.endTime,
     this.registrationDeadline,
+    this.eventRound,
     this.teamConfig,
   });
 }

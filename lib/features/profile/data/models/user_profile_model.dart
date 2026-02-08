@@ -11,6 +11,12 @@ class UserProfileModel extends UserProfileEntity {
     super.role,
     super.isEmailVerified,
     super.approvalStatus,
+    super.isInternalUser,
+    super.isBlocked,
+    super.qrcode,
+    super.paymentReceiptUrl,
+    super.collegeName,
+    super.registrationId,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +33,13 @@ class UserProfileModel extends UserProfileEntity {
           : int.tryParse(json['rollNo']?.toString() ?? '0') ?? 0,
       role: json['role'] ?? 'USER',
       isEmailVerified: json['isEmailVerified'] ?? false,
+      approvalStatus: json['approvalStatus'] ?? 'PENDING',
+      isInternalUser: json['isInternalUser'] ?? false,
+      isBlocked: json['isBlocked'] ?? false,
+      qrcode: json['qrcode'] ?? '',
+      paymentReceiptUrl: json['paymentReceiptUrl'],
+      collegeName: json['collegeName'] ?? json['college'],
+      registrationId: json['registrationId'], 
     );
   }
 
@@ -41,7 +54,14 @@ class UserProfileModel extends UserProfileEntity {
       'role': role,
       'isEmailVerified': isEmailVerified,
       'approvalStatus': approvalStatus,
+      'isInternalUser': isInternalUser,
+      'isBlocked': isBlocked,
+      'qrcode': qrcode,
+      'paymentReceiptUrl': paymentReceiptUrl,
+      'collegeName': collegeName,
+      'registrationId': registrationId, 
     };
+
   }
 
   factory UserProfileModel.fromEntity(UserProfileEntity entity) {
@@ -55,6 +75,12 @@ class UserProfileModel extends UserProfileEntity {
       role: entity.role,
       isEmailVerified: entity.isEmailVerified,
       approvalStatus: entity.approvalStatus,
+      isInternalUser: entity.isInternalUser,
+      isBlocked: entity.isBlocked,
+      qrcode: entity.qrcode,
+      paymentReceiptUrl: entity.paymentReceiptUrl,
+      collegeName: entity.collegeName,  
+      registrationId: entity.registrationId,
     );
   }
 }

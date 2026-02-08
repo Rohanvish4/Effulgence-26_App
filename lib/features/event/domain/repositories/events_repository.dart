@@ -39,6 +39,9 @@ abstract class EventsRepository {
   /// Join an existing team
   Future<Either<Failure, void>> joinTeam(String eventId, String teamId);
 
+  /// Leave a team
+  Future<Either<Failure, void>> leaveTeam(String eventId, String teamId);
+
   // ADMIN/SUPER_ADMIN operations
   Future<Either<Failure, EventEntity>> createEvent(CreateEventParams params);
   Future<Either<Failure, EventEntity>> updateEvent(

@@ -207,6 +207,22 @@ class EventsRepositoryImpl implements EventsRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, void>> leaveTeam(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+
+    try {
+      await remoteDataSource.leaveTeam(eventId, teamId);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
   // ADMIN/SUPER_ADMIN operations
   @override
   Future<Either<Failure, EventEntity>> createEvent(

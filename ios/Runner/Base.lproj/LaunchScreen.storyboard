@@ -16,13 +16,22 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
+                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" image="EffulgenceLogo" translatesAutoresizingMaskIntoConstraints="NO" id="EFL-LOGO">
+                            </imageView>
+                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" image="EffulgenceTextLight" translatesAutoresizingMaskIntoConstraints="NO" id="EFL-TEXT">
                             </imageView>
                         </subviews>
-                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <color key="backgroundColor" red="0.04705882353" green="0.05098039216" blue="0.05882352941" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
-                            <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
-                            <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>
+                            <constraint firstItem="EFL-LOGO" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="logo-center-x"/>
+                            <constraint firstItem="EFL-LOGO" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-40" id="logo-center-y"/>
+                            <constraint firstItem="EFL-LOGO" firstAttribute="width" constant="160" id="logo-width"/>
+                            <constraint firstItem="EFL-LOGO" firstAttribute="height" constant="160" id="logo-height"/>
+
+                            <constraint firstItem="EFL-TEXT" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="text-center-x"/>
+                            <constraint firstItem="EFL-TEXT" firstAttribute="top" secondItem="EFL-LOGO" secondAttribute="bottom" constant="24" id="text-top"/>
+                            <constraint firstItem="EFL-TEXT" firstAttribute="width" constant="240" id="text-width"/>
+                            <constraint firstItem="EFL-TEXT" firstAttribute="height" constant="48" id="text-height"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -32,6 +41,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchImage" width="168" height="185"/>
+        <image name="EffulgenceLogo" width="160" height="160"/>
+        <image name="EffulgenceTextLight" width="240" height="48"/>
     </resources>
 </document>

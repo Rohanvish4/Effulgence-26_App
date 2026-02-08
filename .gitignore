@@ -39,6 +39,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/key.properties
 
 # Web build
 /web/build/
@@ -71,3 +72,4 @@ app.*.map.json
 PRE_PUSH_REVIEW.md
 PUSH_READY_SUMMARY.md
 API_DOCUMENTATION.md
+docs/

@@ -5,7 +5,7 @@ class ParticipationModel extends ParticipationEntity {
   const ParticipationModel({
     required super.id,
     required super.eventId,
-    required super.userId,
+    super.user,
     required super.teamMembers,
     super.teamName,
     required super.participationType,
@@ -25,12 +25,8 @@ class ParticipationModel extends ParticipationEntity {
       eventId: json['event'] is Map
           ? (json['event']['_id'] ?? '')
           : (json['event'] ?? ''),
-      userId: json['user'] is Map
-          ? (json['user']['_id'] ?? '')
-          : (json['user'] ?? ''),
-      teamMembers: json['teamMember'] != null
-          ? List<String>.from(json['teamMember'])
-          : [],
+      user: _parseUser(json['user']),
+        teamMembers: _parseTeamMembers(json['teamMember']),
       teamName: json['teamName'],
       participationType: json['participationType'] ?? 'INDIVIDUAL',
       registeredAt: json['registeredAt'] != null
@@ -47,13 +43,56 @@ class ParticipationModel extends ParticipationEntity {
     );
   }
 
+  static ParticipationUser? _parseUser(dynamic userJson) {
+    if (userJson is Map<String, dynamic>) {
+      return ParticipationUser(
+        id: userJson['_id'] ?? userJson['id'] ?? '',
+        name: userJson['name'] ?? 'Unknown',
+        email: userJson['email'] ?? '',
+      );
+    } else if (userJson is String && userJson.isNotEmpty) {
+      // Fallback if we only receive an ID string
+      return ParticipationUser(id: userJson, name: 'Unknown', email: '');
+    }
+    return null;
+  }
+
+  static List<ParticipationUser> _parseTeamMembers(dynamic teamMembersJson) {
+    if (teamMembersJson is List) {
+      return teamMembersJson.map((member) {
+        if (member is Map<String, dynamic>) {
+          return ParticipationUser(
+            id: member['_id'] ?? member['id'] ?? '',
+            name: member['name'] ?? 'Unknown',
+            email: member['email'] ?? '',
+          );
+        }
+        if (member is String && member.isNotEmpty) {
+          return ParticipationUser(id: member, name: 'Unknown', email: '');
+        }
+        return const ParticipationUser(id: '', name: 'Unknown', email: '');
+      }).toList();
+    }
+    return [];
+  }
+
   /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       '_id': id,
       'event': eventId,
-      'user': userId,
-      'teamMember': teamMembers,
+      'user': user != null
+          ? {'_id': user!.id, 'name': user!.name, 'email': user!.email}
+          : userId, // Fallback to ID string if that's what was there or empty
+      'teamMember': teamMembers
+          .map(
+            (member) => {
+              '_id': member.id,
+              'name': member.name,
+              'email': member.email,
+            },
+          )
+          .toList(),
       'teamName': teamName,
       'participationType': participationType,
       'registeredAt': registeredAt.toIso8601String(),

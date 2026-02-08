@@ -12,57 +12,78 @@ class EventsCubit extends Cubit<EventsState> {
   // DEPENDENCY: Domain layer repository (business logic interface)
   final EventsRepository eventsRepository;
 
-  EventsCubit({required this.eventsRepository}) : super(const EventsInitial());
+  EventsCubit(this.eventsRepository) : super(const EventsState());
 
-  // ===========================================================================
-  // PUBLIC EVENTS OPERATIONS (Available to all users)
-  // ===========================================================================
-
-  /// Load events with optional filtering
-  /// FLOW: UI calls loadEvents() → Repository.getEvents() → Emit EventsLoaded or EventsError
-  /// Backend returns ALL events (no pagination implemented)
-  /// Load events
-  /// FLOW: UI calls loadEvents() → Repository.getEvents() → Emit EventsLoaded or EventsError
-  /// Backend returns ALL events
   Future<void> loadEvents({bool refresh = false}) async {
-    // STEP 1: Emit loading state (unless refreshing existing data)
-    if (refresh || state is! EventsLoaded) {
-      emit(const EventsLoading());
+    if (refresh || state.events.isEmpty) {
+      emit(
+        state.copyWith(
+          isEventsLoading: true,
+          errorMessage: null,
+          successMessage: null,
+        ),
+      );
     }
 
-    // STEP 2: Call repository (domain layer) - backend returns all events
     final result = await eventsRepository.getEvents();
 
-    // STEP 3: Handle result and emit appropriate state
     result.fold(
-      (failure) => emit(EventsError(message: failure.message)), // Left = Error
-      (events) => emit(EventsLoaded(events: events)), // Right = Success
+      (failure) => emit(
+        state.copyWith(isEventsLoading: false, errorMessage: failure.message),
+      ),
+      (events) => emit(
+        state.copyWith(
+          isEventsLoading: false,
+          events: events,
+          status: EventsStatus.success,
+        ),
+      ),
     );
   }
 
-  /// Get event details
   Future<void> getEventDetails(String eventId) async {
-    emit(const EventDetailsLoading());
+    emit(
+      state.copyWith(
+        isDetailsLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.getEventById(eventId);
 
     result.fold(
-      (failure) => emit(EventDetailsError(message: failure.message)),
-      (event) => emit(EventDetailsLoaded(event: event)),
+      (failure) => emit(
+        state.copyWith(isDetailsLoading: false, errorMessage: failure.message),
+      ),
+      (event) =>
+          emit(state.copyWith(isDetailsLoading: false, selectedEvent: event)),
     );
   }
 
   /// Register for event
   Future<void> registerForEvent(String eventId) async {
-    emit(const EventRegistrationLoading());
+    emit(
+      state.copyWith(
+        isOperationLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.registerForEvent(eventId);
 
     result.fold(
-      (failure) => emit(EventRegistrationError(message: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) => emit(
-        const EventRegistrationSuccess(
-          message: 'Successfully registered for the event!',
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Successfully registered for the event!',
         ),
       ),
     );
@@ -74,7 +95,13 @@ class EventsCubit extends Cubit<EventsState> {
     required String teamName,
     bool isPublic = false,
   }) async {
-    emit(const TeamCreationLoading());
+    emit(
+      state.copyWith(
+        isOperationLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.createTeam(
       CreateTeamParams(
@@ -85,10 +112,17 @@ class EventsCubit extends Cubit<EventsState> {
     );
 
     result.fold(
-      (failure) => emit(TeamCreationError(message: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) => emit(
-        const TeamCreationSuccess(
-          message: 'Team created successfully! You can now invite members.',
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage:
+              'Team created successfully! You can now invite members.',
         ),
       ),
     );
@@ -96,26 +130,53 @@ class EventsCubit extends Cubit<EventsState> {
 
   /// Load user's participations
   Future<void> loadMyParticipations() async {
-    emit(const MyParticipationsLoading());
+    emit(
+      state.copyWith(
+        isParticipationsLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.getMyParticipations();
 
     result.fold(
-      (failure) => emit(MyParticipationsError(message: failure.message)),
-      (participations) =>
-          emit(MyParticipationsLoaded(participations: participations)),
+      (failure) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (participations) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          myParticipations: participations,
+        ),
+      ),
     );
   }
 
   /// Load public teams for a team event
   Future<void> loadPublicTeams(String eventId) async {
-    emit(const PublicTeamsLoading());
+    emit(
+      state.copyWith(
+        isOperationLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.getPublicTeams(eventId);
 
     result.fold(
-      (failure) => emit(PublicTeamsError(message: failure.message)),
-      (teams) => emit(PublicTeamsLoaded(teams: teams)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (teams) =>
+          emit(state.copyWith(isOperationLoading: false, publicTeams: teams)),
     );
   }
 
@@ -124,26 +185,87 @@ class EventsCubit extends Cubit<EventsState> {
     required String eventId,
     required String teamId,
   }) async {
-    emit(const TeamJoinLoading());
+    emit(
+      state.copyWith(
+        isOperationLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
 
     final result = await eventsRepository.joinTeam(eventId, teamId);
 
     result.fold(
-      (failure) => emit(TeamJoinError(message: failure.message)),
-      (_) =>
-          emit(const TeamJoinSuccess(message: 'Successfully joined the team!')),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (_) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Successfully joined the team!',
+        ),
+      ),
+    );
+  }
+
+  /// Leave a team
+  Future<void> leaveTeam({
+    required String eventId,
+    required String teamId,
+  }) async {
+    emit(
+      state.copyWith(
+        isOperationLoading: true,
+        errorMessage: null,
+        successMessage: null,
+      ),
+    );
+
+    final result = await eventsRepository.leaveTeam(eventId, teamId);
+
+    result.fold(
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (_) {
+        // Success - emit success message and reload participations
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Left team successfully',
+          ),
+        );
+        // Auto-refresh participations to update UI
+        loadMyParticipations();
+      },
     );
   }
 
   /// Create a new event (Admin/Super Admin)
   Future<void> createEvent(CreateEventParams params) async {
-    emit(const EventCreationLoading());
-
+    emit(state.copyWith(isOperationLoading: true));
     final result = await eventsRepository.createEvent(params);
 
     result.fold(
-      (failure) => emit(EventOperationError(message: failure.message)),
-      (event) => emit(EventCreated(event: event)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (event) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Event created',
+          events: [...state.events, event],
+        ),
+      ),
     );
   }
 
@@ -152,50 +274,91 @@ class EventsCubit extends Cubit<EventsState> {
     required String eventId,
     required UpdateEventParams params,
   }) async {
-    emit(const EventUpdateLoading());
+    emit(state.copyWith(isOperationLoading: true));
 
     final result = await eventsRepository.updateEvent(eventId, params);
 
     result.fold(
-      (failure) => emit(EventOperationError(message: failure.message)),
-      (event) => emit(EventUpdated(event: event)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (event) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Event updated',
+          events: [...state.events, event],
+        ),
+      ),
     );
   }
 
   /// Delete an event (Admin/Super Admin)
   Future<void> deleteEvent(String eventId) async {
-    emit(const EventDeletionLoading());
+    emit(state.copyWith(isOperationLoading: true));
 
     final result = await eventsRepository.deleteEvent(eventId);
 
     result.fold(
-      (failure) => emit(EventOperationError(message: failure.message)),
-      (_) => emit(const EventDeleted()),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (_) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Event deleted',
+        ),
+      ),
     );
   }
 
   /// Restore a deleted event (Admin/Super Admin)
   Future<void> restoreEvent(String eventId) async {
-    emit(const EventRestorationLoading());
+    emit(state.copyWith(isOperationLoading: true));
 
     final result = await eventsRepository.restoreEvent(eventId);
 
     result.fold(
-      (failure) => emit(EventOperationError(message: failure.message)),
-      (_) => emit(const EventRestored()),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (_) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: 'Event restored',
+        ),
+      ),
     );
   }
 
   /// Load event registrations (Admin/Super Admin/Member)
   Future<void> loadEventRegistrations(String eventId) async {
-    emit(const EventRegistrationsLoading());
+    emit(state.copyWith(isOperationLoading: true));
 
     final result = await eventsRepository.getEventRegistrations(eventId);
 
     result.fold(
-      (failure) => emit(EventRegistrationsError(message: failure.message)),
-      (registrations) =>
-          emit(EventRegistrationsLoaded(registrations: registrations)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (registrations) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          successMessage: null,
+          myParticipations: registrations,
+        ),
+      ),
     );
   }
 }

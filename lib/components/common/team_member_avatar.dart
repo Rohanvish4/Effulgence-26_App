@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -32,22 +33,12 @@ class TeamMemberAvatar extends StatelessWidget {
 
   Widget _buildContent() {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return Image.network(
-        imageUrl!,
+      return CachedNetworkImage(
+        imageUrl: imageUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildInitials(),
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded /
-                        loadingProgress.expectedTotalBytes!
-                  : null,
-              strokeWidth: 2,
-            ),
-          );
-        },
+        errorWidget: (context, url, error) => _buildInitials(),
+        placeholder: (context, url) =>
+            Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
     return _buildInitials();
