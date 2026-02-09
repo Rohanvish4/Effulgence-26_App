@@ -35,7 +35,7 @@ class NotificationService {
       );
 
       await _flutterLocalNotificationsPlugin.initialize(
-        settings: initializationSettings,
+        initializationSettings,
         onDidReceiveNotificationResponse: (details) {},
       );
 
@@ -88,13 +88,10 @@ class NotificationService {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _flutterLocalNotificationsPlugin.show(
-      // Lint: id is required named parameter?
-      // Lint: Too many positional arguments (0 expected)
-      // This strongly suggests named parameters.
-      id: message.hashCode,
-      title: message.notification?.title,
-      body: message.notification?.body,
-      notificationDetails: platformChannelSpecifics,
+      message.hashCode,
+      message.notification?.title,
+      message.notification?.body,
+      platformChannelSpecifics,
     );
   }
 }
