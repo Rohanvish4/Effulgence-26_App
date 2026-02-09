@@ -24,7 +24,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.29.0' # Matches the user's implicit version or recent stable
+          flutter-version: '3.35.0' # Matches the user's implicit version or recent stable
 
       - name: Decode Android Keystore
         run: |
