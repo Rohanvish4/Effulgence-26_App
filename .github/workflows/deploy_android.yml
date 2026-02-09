@@ -41,10 +41,24 @@ jobs:
           echo "${{ secrets.ANDROID_KEY_PROPERTIES }}" > android/key.properties
 
 
-      # Decode service account JSON (Base64 → .json)
+          # Decode service account JSON (Base64 → .json)
       - name: Decode Service Account JSON
         run: |
-          printf "%s" "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/service_account.json
+          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/service_account.json
+
+      - name: Verify Service Account JSON
+        run: |
+          if [ ! -s android/service_account.json ]; then
+            echo "Error: android/service_account.json is empty or does not exist."
+            exit 1
+          fi
+          echo "android/service_account.json size: $(wc -c < android/service_account.json) bytes"
+          if ! jq -e . android/service_account.json >/dev/null 2>&1; then
+             echo "Error: android/service_account.json is not valid JSON."
+             # Do NOT print the content for security, but maybe print the first few chars if really needed, be careful
+             exit 1
+          fi
+          echo "android/service_account.json is valid JSON."
 
 
       # Install dependencies
