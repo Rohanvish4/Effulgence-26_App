@@ -2,8 +2,7 @@ name: Deploy to Google Play
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -11,44 +10,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      # Checkout source
+      - uses: actions/checkout@v4
+
+
+      # Java required for Android build
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: zulu
+          java-version: 17
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+
+      # Flutter setup with cache for faster builds
+      - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-          flutter-version: '3.35.0' # Matches the user's implicit version or recent stable
+          channel: stable
+          cache: true
 
+
+      # Decode keystore (Base64 → .jks)
       - name: Decode Android Keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
+
+      # Recreate key.properties
       - name: Create key.properties
         run: |
           echo "${{ secrets.ANDROID_KEY_PROPERTIES }}" > android/key.properties
 
-      - name: Create Service Account JSON
-        run: |
-          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" > android/service_account.json
 
+      # Decode service account JSON (Base64 → .json)
+      - name: Decode Service Account JSON
+        run: |
+          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" | base64 --decode > android/service_account.json
+
+
+      # Install dependencies
       - name: Get Dependencies
         run: flutter pub get
 
+
+      # Optional but recommended
+      - name: Run Tests
+        run: flutter test
+
+
+      # Build signed release bundle
       - name: Build App Bundle
         run: flutter build appbundle --release
 
+
+      # Upload to Google Play (Closed testing)
       - name: Upload to Google Play
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: android/service_account.json
           packageName: in.effulgence26.app
           releaseFiles: build/app/outputs/bundle/release/app-release.aab
-          track: internal # Can be alpha, beta, production, internal
-          status: draft # Or completed, inProgress, halted
+          track: beta        # Closed testing
+          status: draft      # change to completed for auto publish
