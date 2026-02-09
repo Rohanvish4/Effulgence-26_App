@@ -88,6 +88,140 @@ class EffulgenceBackgroundElements {
     ),
   ];
 
+  static const List<FloatingBackgroundElement> dense2 = [
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/26.png',
+      count: 3,
+      minSize: 90,
+      maxSize: 180,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 30,
+      driftY: 22,
+      minSpeed: 0.35,
+      maxSpeed: 0.8,
+      minRotationSpeed: 0,
+      maxRotationSpeed: 0,
+      blur: false,
+      blurSigma: 2.5,
+      rotationEnabled: false,
+    ),
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/27.png',
+      count: 3,
+      minSize: 80,
+      maxSize: 160,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 26,
+      driftY: 20,
+      minSpeed: 0.3,
+      maxSpeed: 0.75,
+      minRotationSpeed: -0.07,
+      maxRotationSpeed: 0.07,
+      blur: false,
+      blurSigma: 2.2,
+      rotationEnabled: false,
+    ),
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/28.png',
+      count: 3,
+      minSize: 85,
+      maxSize: 170,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 28,
+      driftY: 24,
+      minSpeed: 0.32,
+      maxSpeed: 0.78,
+      minRotationSpeed: 0,
+      maxRotationSpeed: 0,
+      blur: false,
+      blurSigma: 2.3,
+      rotationEnabled: false,
+    ),
+  ];
+
+  static const List<FloatingBackgroundElement> dense3 = [
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/29.png',
+      count: 3,
+      minSize: 90,
+      maxSize: 180,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 30,
+      driftY: 22,
+      minSpeed: 0.35,
+      maxSpeed: 0.8,
+      minRotationSpeed: 0,
+      maxRotationSpeed: 0,
+      blur: false,
+      blurSigma: 2.5,
+      rotationEnabled: false,
+    ),
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/30.png',
+      count: 3,
+      minSize: 80,
+      maxSize: 160,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 26,
+      driftY: 20,
+      minSpeed: 0.3,
+      maxSpeed: 0.75,
+      minRotationSpeed: -0.07,
+      maxRotationSpeed: 0.07,
+      blur: false,
+      blurSigma: 2.2,
+      rotationEnabled: false,
+    ),
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/1.png',
+      count: 3,
+      minSize: 85,
+      maxSize: 170,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 28,
+      driftY: 24,
+      minSpeed: 0.32,
+      maxSpeed: 0.78,
+      minRotationSpeed: 0,
+      maxRotationSpeed: 0,
+      blur: false,
+      blurSigma: 2.3,
+      rotationEnabled: false,
+    ),
+  ];
+
+
+    static const List<FloatingBackgroundElement> staticElementsBg = [
+    FloatingBackgroundElement(
+      assetPath: 'background_elements/static_bg.png',
+      count: 1,
+      minSize: 1920,
+      maxSize: 1920,
+      minOpacity: 0.9,
+      maxOpacity: 1,
+      driftX: 0,
+      driftY: 0,
+      minSpeed: 0,
+      maxSpeed: 0,
+      minRotationSpeed: 0,
+      maxRotationSpeed: 0,
+      blur: false,
+      blurSigma: 2.5,
+      rotationEnabled: false,
+    ),
+  ];
+
+
+  
+
+
+
   /// Minimal/subtle variant (fewer, smaller, more transparent).
   static const List<FloatingBackgroundElement> minimal = [
     FloatingBackgroundElement(

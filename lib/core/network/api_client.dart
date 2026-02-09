@@ -155,6 +155,52 @@ class ApiClient {
     }
   }
 
+  /// Update FCM Token
+  Future<void> updateFcmToken(String token) async {
+    await post(
+      ApiConstants.updateFcmToken,
+      data: {'fcmToken': token},
+    );
+  }
+
+  /// Get Notifications
+  Future<Response> getNotifications({int page = 1, int limit = 10}) async {
+    return await get(
+      ApiConstants.notifications,
+      queryParameters: {'page': page, 'limit': limit},
+    );
+  }
+
+  /// Mark a single notification as read
+  Future<void> markNotificationRead(String notificationId) async {
+    await put('${ApiConstants.markNotificationRead}$notificationId/read');
+  }
+
+  /// Mark all notifications as read
+  Future<void> markAllNotificationsRead() async {
+    await put(ApiConstants.markAllNotificationsRead);
+  }
+
+  /// Send broadcast notification (Admin only)
+  /// If targetUserId is provided, sends to that specific user only
+  /// targetType can be 'ALL', 'INTERNAL', or 'EXTERNAL' to filter recipients
+  Future<Response> sendBroadcast({
+    required String title,
+    required String message,
+    String? targetUserId,
+    String targetType = 'ALL',
+  }) async {
+    return await post(
+      ApiConstants.broadcastNotification,
+      data: {
+        'title': title,
+        'message': message,
+        'targetType': targetType,
+        if (targetUserId != null) 'targetUserId': targetUserId,
+      },
+    );
+  }
+
   /// Handle Dio errors and convert to app exceptions
   AppException _handleError(DioException error) {
     switch (error.type) {

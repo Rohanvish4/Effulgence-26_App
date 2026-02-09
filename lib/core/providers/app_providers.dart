@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../network/api_client.dart';
 import '../network/network_info.dart';
+import '../services/notification_service.dart';
 
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -30,6 +31,9 @@ import '../../features/qrcode/data/datasources/qrcode_remote_datasource.dart';
 import '../../features/qrcode/data/repositories/qrcode_repository_impl.dart';
 import '../../features/qrcode/presentation/cubit/qrcode_cubit.dart';
 import '../../features/qrcode/presentation/cubit/qr_verification_cubit.dart';
+
+import '../../features/notifications/data/repositories/notification_repository_impl.dart';
+import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 
 /// App-wide providers and dependency injection
 class AppProviders {
@@ -157,6 +161,25 @@ class AppProviders {
     );
 
     // =========================================================================
+    // NOTIFICATION SERVICE
+    // =========================================================================
+    final notificationService = NotificationService(apiClient: apiClient);
+    try {
+      await notificationService.initialize();
+    } catch (e) {
+      print("Failed to initialize Notification Service: $e");
+    }
+
+    // =========================================================================
+    // NOTIFICATION FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+    final notificationRepository = NotificationRepositoryImpl(
+      apiClient: apiClient,
+      networkInfo: networkInfo,
+    );
+    final notificationCubit = NotificationCubit(repository: notificationRepository);
+
+    // =========================================================================
     // PROVIDER REGISTRATION (Dependency Injection Container)
     // =========================================================================
 
@@ -168,6 +191,9 @@ class AppProviders {
       Provider<PersistCookieJar>.value(value: cookieJar),
       // Provider<EventsRepositoryImpl>.value(value: eventsRepository),
       Provider<UserProfileRepositoryImpl>.value(value: profileRepository),
+      Provider<NotificationService>.value(value: notificationService),
+      Provider<NotificationRepositoryImpl>.value(value: notificationRepository),
+      Provider<ApiClient>.value(value: apiClient),
 
       // =========================================================================
       // CUBITS (Presentation Layer - State Management)
@@ -180,6 +206,7 @@ class AppProviders {
       BlocProvider<SponsorsCubit>.value(value: sponsorsCubit),
       BlocProvider<QrCodeCubit>.value(value: qrCodeCubit),
       BlocProvider<QrVerificationCubit>.value(value: qrVerificationCubit),
+      BlocProvider<NotificationCubit>.value(value: notificationCubit),
       // =========================================================================
       // FUTURE FEATURES: Add more providers here as needed
       // =========================================================================

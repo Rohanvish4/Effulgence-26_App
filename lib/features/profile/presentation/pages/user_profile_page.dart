@@ -138,6 +138,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
       pinned: true,
       backgroundColor: AppColors.bgPrimary.withValues(alpha: 0.8),
       actions: [
+
+        if(profile.isSuperAdmin ) ...[
+        IconButton(
+          icon: const Icon(Icons.campaign_outlined), // Broadcast Icon
+          tooltip: 'Send Broadcast',
+          onPressed: () => context.push('/admin/broadcast'),
+        ),],
+
+
         IconButton(
           onPressed: () => context.push('/editUserDetails'),
           icon: const Icon(Icons.tune_rounded, color: AppColors.primary),

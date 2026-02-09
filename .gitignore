@@ -40,6 +40,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/key.properties
+android/app/upload-keystore.jks
 
 # Web build
 /web/build/
@@ -73,3 +74,5 @@ PRE_PUSH_REVIEW.md
 PUSH_READY_SUMMARY.md
 API_DOCUMENTATION.md
 docs/
+keystore.txt
+keystore_base64.txt

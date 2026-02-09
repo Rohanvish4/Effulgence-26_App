@@ -69,6 +69,13 @@ class ApiConstants {
   static const String userRegisteredEvents =
       '/user/'; // + userId + '/registered-events'
 
+  // Notifications Endpoints
+  static const String updateFcmToken = '/notifications/update-token';
+  static const String notifications = '/notifications';
+  static const String markNotificationRead = '/notifications/'; // + notificationId + '/read'
+  static const String markAllNotificationsRead = '/notifications/read-all';
+  static const String broadcastNotification = '/notifications/broadcast';
+
   // Timeouts
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);

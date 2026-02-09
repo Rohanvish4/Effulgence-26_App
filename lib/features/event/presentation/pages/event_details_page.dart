@@ -3,6 +3,7 @@ import 'package:effulgence26_mobile_app/features/event/domain/entities/event_ent
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:html_unescape/html_unescape_small.dart';
 import '../../../../components/components.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -28,6 +29,8 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   List<String> _registeredEventIds = [];
   EventEntity? _event;
   bool _isDialogVisible = false;
+
+   final unescape = HtmlUnescape();
 
   @override
   void initState() {
@@ -324,7 +327,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                 ],
               ),
               child: Text(
-                event.description!,
+                unescape.convert(event.description!),
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.7,

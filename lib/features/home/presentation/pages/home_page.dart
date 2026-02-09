@@ -113,15 +113,22 @@ class _HomePageState extends State<HomePage>
   // App Bar
   Widget _buildAppBar() {
     return SliverAppBar(
+      actions: [IconButton(
+        icon: const Icon(Icons.notifications_rounded, color: AppColors.primary),
+        onPressed: () {
+          HapticFeedback.vibrate();
+          context.push('/notifications');
+        },
+      ),],
       expandedHeight: 220,
       pinned: true,
-      leading: IconButton(
-        icon: const Icon(Icons.menu_rounded, color: AppColors.primary),
-        onPressed: () {
-          Hometab.of(context)?.toggleDrawer();
-          HapticFeedback.vibrate();
-        },
-      ),
+      // leading: IconButton(
+      //   icon: const Icon(Icons.menu_rounded, color: AppColors.primary),
+      //   onPressed: () {
+      //     Hometab.of(context)?.toggleDrawer();
+      //     HapticFeedback.vibrate();
+      //   },
+      // ),      
       backgroundColor: Colors.transparent, // Transparent to show particles
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -790,7 +797,7 @@ class _HomePageState extends State<HomePage>
                             style: AppTextStyles.bodySmall.copyWith(
                               color: AppColors.textSecondary,
                             ),
-                            maxLines: 2,
+                            maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],

@@ -26,6 +26,7 @@ class _EventsListPageState extends State<EventsListPage> {
   String? _registeringEventId;
   List<String> _registeredEventIds = [];
   final ScrollController _scrollController = ScrollController();
+ 
 
   // Caching
   List<EventEntity>? _cachedEvents;

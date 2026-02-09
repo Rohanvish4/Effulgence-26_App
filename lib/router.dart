@@ -18,6 +18,8 @@ import 'features/sponsors/presentation/cubit/sponsors_cubit.dart';
 import 'features/sponsors/presentation/cubit/sponsors_state.dart';
 import 'features/qrcode/presentation/pages/qrcode_page.dart';
 import 'features/qrcode/presentation/pages/qr_scanner_page.dart';
+import 'package:effulgence26_mobile_app/features/notifications/presentation/pages/notification_screen.dart';
+import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_broadcast_page.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// App router configuration using GoRouter
@@ -202,11 +204,25 @@ class AppRouter {
         builder: (context, state) => const QrScannerPage(),
       ),
 
+      // Notifications Route
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationScreen(),
+      ),
+
       // Contact Us Route
       GoRoute(
         path: '/contact',
         name: 'contact',
         builder: (context, state) => const ContactUsPage(),
+      ),
+
+      // Admin Broadcast Route
+      GoRoute(
+        path: '/admin/broadcast',
+        name: 'adminBroadcast',
+        builder: (context, state) => const AdminBroadcastPage(),
       ),
 
       // About Effulgence Route

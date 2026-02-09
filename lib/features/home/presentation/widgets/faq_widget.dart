@@ -7,88 +7,27 @@ class FaqWidget extends StatelessWidget {
   const FaqWidget({super.key});
 
   static const List<Map<String, String>> _faqData = [
-    {
-      "question": "What is Effulgence?",
-      "answer":
-          "Effulgence is the flagship national level techno management fest of KNIT Sultanpur. It brings together competitions, hackathons, workshops, expert talks, startup initiatives, and cultural showcases to create a complete innovation ecosystem.",
-    },
-    {
-      "question": "Who can participate in Effulgence?",
-      "answer":
-          "The fest is open to students from KNIT as well as participants from colleges and universities across the country.",
-    },
-    {
-      "question": "How can I register for Effulgence?",
-      "answer":
-          "Participants can register online through the official Effulgence platform or complete on campus registration at the help desk during the fest.",
-    },
-    {
-      "question": "Is there any registration fee?",
-      "answer":
-          "Yes. A nominal fee of ₹1499 provides full access to the four day fest experience, including accommodation, meals, night passes, and eligibility to participate in all competitions, workshops, and activities.",
-    },
-    {
-      "question": "What does the registration fee include?",
-      "answer":
-          "The registration package covers four day accommodation, food services, entry to DJ and Star Nights, cultural events, and access to all technical and management competitions and workshops.",
-    },
-    {
-      "question": "Can I participate in multiple events?",
-      "answer":
-          "Yes. Participants may register for multiple events provided the schedules do not overlap.",
-    },
-    {
-      "question": "Are there team events available?",
-      "answer":
-          "Yes. Effulgence features both individual and team based competitions. Team sizes vary by event and are specified in the respective rulebooks.",
-    },
-    {
-      "question": "Will participants receive certificates?",
-      "answer":
-          "All registered participants receive official participation certificates. Winners and top performers are awarded merit certificates along with prizes.",
-    },
-    {
-      "question": "Are workshops and tech talks included?",
-      "answer":
-          "Yes. The fest hosts industry led workshops, expert sessions, and technical talks across AI, Cyber Security, Robotics, DevOps, Blockchain, and emerging technologies.",
-    },
-    {
-      "question": "What cultural activities are part of the fest?",
-      "answer":
-          "Beyond competitions, Effulgence features DJ Nights, Star Night performances, live music, and cultural showcases, creating a vibrant techno cultural experience for all attendees.",
-    },
-    {
-      "question":
-          "Are accommodation facilities available for outstation participants?",
-      "answer":
-          "Yes. On campus accommodation is provided for registered outstation participants as part of the registration package.",
-    },
-    {
-      "question": "Will food be provided during the event?",
-      "answer":
-          "Yes. Meals are included in the registration package, with additional food stalls available across the campus for convenience.",
-    },
-    {
-      "question": "What should I carry on the day of reporting?",
-      "answer":
-          "Participants should carry a valid college ID card, registration confirmation, and essential personal items for their stay.",
-    },
-    {
-      "question": "What are the prize details for winners?",
-      "answer":
-          "Winners receive cash prizes, goodies, certificates, and recognition. Detailed prize structures are announced separately for each event.",
-    },
-    {
-      "question": "Where can I find the event schedule and updates?",
-      "answer":
-          "The complete schedule, announcements, and updates are published on the official website, Mobile App and social media channels of Effulgence.",
-    },
-    {
-      "question": "Whom should I contact for queries or support?",
-      "answer":
-          "For assistance, participants can reach the organizing committee through the official help desk, email, or social media channels.",
-    },
-  ];
+  {
+    "question": "What is Effulgence and who can participate?",
+    "answer": "Effulgence is the flagship national-level techno-management fest of KNIT Sultanpur, featuring competitions, hackathons, workshops, expert talks, startup initiatives, and cultural events. It is open to students from KNIT as well as colleges and universities across the country."
+  },
+  {
+    "question": "How can I register and is there a registration fee?",
+    "answer": "Participants can register online through the official Effulgence platform or on campus at the help desk during the fest. The registration fee is ₹1499."
+  },
+  {
+    "question": "What does the registration fee include?",
+    "answer": "The fee covers four-day accommodation and meals, entry to DJ and Star Nights, cultural events, and eligibility to participate in all technical, management competitions, workshops, and activities."
+  },
+  {
+    "question": "Can I participate in multiple or team events?",
+    "answer": "Yes. Participants can take part in multiple events as long as schedules do not overlap. Both individual and team-based events are available, with team size details mentioned in respective rulebooks."
+  },
+  {
+    "question": "Where can I find schedules, updates, and contact support?",
+    "answer": "The full event schedule, announcements, and updates are available on the official Effulgence website and social media channels. For queries, participants can contact the organizing committee via the official help desk, email, or social platforms."
+  }
+];
 
   @override
   Widget build(BuildContext context) {
