@@ -121,8 +121,7 @@ flutter build ios --release
 
 ##  API Integration
 
-The app connects to the Effulgence'26 backend API:
-- **Base URL**: `https://api.effulgence26.live/`
+The app connects to the Effulgence'26 backend API:...
 - **Documentation**: See `API_DOCUMENTATION.md` for detailed API specs
 
 ##  UI/UX
