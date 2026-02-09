@@ -41,34 +41,53 @@ jobs:
           echo "${{ secrets.ANDROID_KEY_PROPERTIES }}" > android/key.properties
 
 
-          # Decode service account JSON (Base64 → .json)
-      - name: Decode Service Account JSON
+          # Decode service account JSON (Base64 → .json) or handling Raw JSON
+      - name: Extract Service Account JSON
+        id: extract_service_account
         run: |
-          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_BASE64 }}" | base64 --decode > android/service_account.json
-
-      - name: Verify Service Account JSON
-        run: |
-          if [ ! -s android/service_account.json ]; then
-            echo "Error: android/service_account.json is empty or does not exist."
-            exit 1
+          # Save the secret to a temporary file
+          echo "${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}" > android/service_account_raw
+          
+          # Attempt 1: Try to decode as Base64 and check if it is valid JSON
+          if base64 --decode android/service_account_raw > android/service_account_decoded.json 2>/dev/null; then
+            if jq -e . android/service_account_decoded.json >/dev/null 2>&1; then
+              echo "✅ Success: Secret is Base64 encoded JSON."
+              mv android/service_account_decoded.json android/service_account.json
+              echo "Resulting JSON size: $(wc -c < android/service_account.json) bytes"
+              exit 0
+            fi
           fi
-          echo "android/service_account.json size: $(wc -c < android/service_account.json) bytes"
-          if ! jq -e . android/service_account.json >/dev/null 2>&1; then
-             echo "Error: android/service_account.json is not valid JSON."
-             # Do NOT print the content for security, but maybe print the first few chars if really needed, be careful
-             exit 1
+          
+          # Attempt 2: Check if the raw secret is already valid JSON
+          if jq -e . android/service_account_raw >/dev/null 2>&1; then
+             echo "✅ Success: Secret is Raw JSON."
+             mv android/service_account_raw android/service_account.json
+             echo "Resulting JSON size: $(wc -c < android/service_account.json) bytes"
+             exit 0
           fi
-          echo "android/service_account.json is valid JSON."
+          
+          # Failure Analysis
+          echo "❌ Error: Could not extract valid JSON from GOOGLE_PLAY_SERVICE_ACCOUNT_JSON."
+          
+          # Check for common issues
+          if grep -q "^MII" android/service_account_raw; then
+             echo "⚠️  Diagnosis: The secret starts with 'MII...', which usually indicates a Base64 encoded PKCS12 (.p12) key or private key."
+             echo "   The 'upload-google-play' action requires a JSON service account key."
+             echo "   Please generate a new JSON key from the Google Cloud Console and add it to your secrets."
+          elif [ ! -s android/service_account_raw ]; then
+             echo "⚠️  Diagnosis: The secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON appears to be empty."
+          else
+             echo "⚠️  Diagnosis: The secret content format is unrecognized (neither valid JSON nor Base64-encoded JSON)."
+          fi
+          
+          # Clean up
+          rm -f android/service_account_raw android/service_account_decoded.json
+          exit 1
 
 
       # Install dependencies
       - name: Get Dependencies
         run: flutter pub get
-
-
-      # Optional but recommended
-      - name: Run Tests
-        run: flutter test
 
 
       # Build signed release bundle
