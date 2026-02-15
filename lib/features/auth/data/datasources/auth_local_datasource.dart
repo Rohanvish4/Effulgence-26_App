@@ -60,6 +60,7 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     await secureStorage.delete(key: AppConstants.authTokenKey);
     await sharedPreferences.remove(AppConstants.userDataKey);
     await sharedPreferences.remove(AppConstants.isLoggedInKey);
+    await sharedPreferences.remove(AppConstants.cachedFcmTokenKey);
   }
 
   @override

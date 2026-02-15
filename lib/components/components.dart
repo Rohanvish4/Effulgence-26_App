@@ -22,3 +22,4 @@ export 'states/empty_state.dart';
 export 'common/common_widgets.dart';
 export 'common/particle_background.dart';
 export 'common/effulgence_background_elements.dart';
+export 'ui/hero_gradient_border.dart';

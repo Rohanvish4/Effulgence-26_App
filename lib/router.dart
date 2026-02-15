@@ -1,6 +1,8 @@
+import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_all_users_page.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
 import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_edit_page.dart';
+import 'package:effulgence26_mobile_app/splash_screen.dart';
 import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_web_page.dart';
 import 'package:effulgence26_mobile_app/features/contact/presentation/pages/contact_us_page.dart';
 import 'package:effulgence26_mobile_app/features/about/presentation/pages/about_effulgence_page.dart';
@@ -29,11 +31,14 @@ class AppRouter {
 
   AppRouter({required this.authCubit});
 
+  static final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
   /// The main GoRouter instance
   /// - refreshListenable: Listens to auth state changes and triggers redirects
   /// - redirect: Logic to redirect users based on authentication status
   /// - routes: All available routes in the app
   late final GoRouter router = GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/',
     debugLogDiagnostics: true, // Shows navigation logs in debug mode
     // This listens to authCubit.stream and notifies GoRouter when auth state changes
@@ -59,17 +64,18 @@ class AppRouter {
       final isAuthenticated = authState is AuthAuthenticated;
       final isRegistrationSuccess = authState is AuthRegistrationSuccess;
 
-      // Check if auth is still loading (checking login status)
-      final isLoading = authState is AuthLoading;
+      // Check if auth is still loading (checking login status) or initial state
+      final isLoading = authState is AuthLoading || authState is AuthInitial;
 
       debugPrint(
         ' isAuthRoute: $isAuthRoute, isAuthenticated: $isAuthenticated, isRegistrationSuccess: $isRegistrationSuccess, isLoading: $isLoading',
       );
 
-      // If auth is still loading, don't redirect yet
+      // If auth is still loading, redirect to splash if not already there
       if (isLoading) {
-        debugPrint(' Auth loading, staying on current route');
-        return null; // Stay on current route while loading
+        debugPrint(' Auth loading/initial, redirecting to /splash');
+        if (state.matchedLocation != '/splash') return '/splash';
+        return null;
       }
 
       // If user is NOT authenticated and NOT registration success and NOT on auth route, redirect to login
@@ -80,9 +86,9 @@ class AppRouter {
         return '/login';
       }
 
-      // If user IS authenticated and ON auth route, redirect to home
-      if (isAuthenticated && isAuthRoute) {
-        debugPrint('Authenticated on auth route, redirecting to /');
+      // If user IS authenticated and (ON auth route OR ON splash), redirect to home
+      if (isAuthenticated && (isAuthRoute || state.matchedLocation == '/splash')) {
+        debugPrint('Authenticated on auth/splash route, redirecting to /');
         return '/';
       }
 
@@ -113,6 +119,13 @@ class AppRouter {
         path: '/register',
         name: 'register',
         builder: (context, state) => const RegisterPage(),
+      ),
+
+      // Splash Route
+      GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const EffulgenceSplashScreen(),
       ),
 
       // Main App Routes - Require authentication
@@ -223,6 +236,13 @@ class AppRouter {
         path: '/admin/broadcast',
         name: 'adminBroadcast',
         builder: (context, state) => const AdminBroadcastPage(),
+      ),
+
+      // Admin Users Route
+      GoRoute(
+        path: '/admin/users',
+        name: 'adminUsers',
+        builder: (context, state) => const AdminAllUsersPage(),
       ),
 
       // About Effulgence Route

@@ -62,7 +62,7 @@ class ApiConstants {
   static const String domainDetails = '/domains/'; // + domainId
 
   // Users Endpoints (Admin)
-  static const String users = '/users';
+  static const String users = '/user/users';
   static const String externalUsers = '/user/users/external';
   static const String updateRole = '/user/update-role';
   static const String approveStatus = '/user/approveStatus';

@@ -17,7 +17,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/user_profile_entity.dart';
 import '../cubit/profile_cubit.dart';
 import '../cubit/profile_state.dart';
-
+import '../../../auth/domain/entity/user_entity.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import '../../../../core/services/widget_to_pdf_service.dart';
+import '../widgets/id_card_widget.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -71,7 +75,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
             }
           },
           builder: (context, state) {
-            if (state is ProfileLoading || state is ProfileUpdateLoading || state is ProfilePaymentSubmitting) {
+            if (state is ProfileLoading) {
+              return _buildShimmerLoading();
+            } else if (state is ProfileUpdateLoading || state is ProfilePaymentSubmitting) {
               return const Center(child: AppLoadingIndicator());
             } else if (state is ProfileLoaded) {
               return _buildProfileContent(context, state.profile);
@@ -144,7 +150,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
           icon: const Icon(Icons.campaign_outlined), // Broadcast Icon
           tooltip: 'Send Broadcast',
           onPressed: () => context.push('/admin/broadcast'),
-        ),],
+        ),
+        IconButton(
+          icon: const Icon(Icons.person), // Broadcast Icon
+          tooltip: 'Users',
+          onPressed: () => context.push('/admin/users'),
+        ),
+        ],
 
 
         IconButton(
@@ -408,13 +420,180 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  //code to generate pdf of id card
+  Widget _buildIdCardButton(BuildContext context, UserProfileEntity profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: AppButton(
+        text: "SHOW ID CARD",
+        onPressed: () => _showIdCardDialog(context, profile),
+        icon: Icons.badge_outlined,
+        backgroundColor: AppColors.bgSecondary,
+        textColor: AppColors.textPrimary,
+        isOutlined: true,
+      ),
+    );
+  }
 
+  void _showIdCardDialog(BuildContext context, UserProfileEntity user) {
+    final GlobalKey idCardKey = GlobalKey();
 
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IdCardWidget(
+                user: UserEntity(
+                  id: user.id,
+                  name: user.name,
+                  email: user.email,
+                  mobile: user.mobile,
+                  rollNo: user.rollNo,
+                  role: user.role,
+                  imageUrl: user.imageUrl,
+                  isEmailVerified: user.isEmailVerified,
+                  isInternalUser: user.isInternalUser,
+                  approvalStatus: user.approvalStatus,
+                  collegeName: user.collegeName,
+                  effulgenceId: user.qrcode, // Mapping qrcode to effulgenceId
+                  registrationId: user.registrationId,
+                ),
+                boundaryKey: idCardKey,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 32),
+                  ),
+                  const SizedBox(width: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => _downloadIdCard(idCardKey),
+                    icon: const Icon(Icons.download_rounded),
+                    label: const Text("Download PDF"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  Future<void> _downloadIdCard(GlobalKey key) async {
+    try {
+      _showSnackBar("Generating PDF...", AppColors.primary);
+      
+      final pdfBytes = await WidgetToPdfService().captureAndGeneratePdf(key);
+      
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/effulgence_id_card.pdf');
+      await file.writeAsBytes(pdfBytes);
 
+      _showSnackBar("ID Card saved successfully!", AppColors.success);
+      
+      await OpenFile.open(file.path);
+      
+    } catch (e) {
+      _showSnackBar("Failed to download ID card: $e", AppColors.error);
+    }
+  }
 
-  //code to generate pdf of id card ends
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      child: Column(
+        children: [
+          // AppBar Shimmer
+          Container(
+            height: 250,
+            width: double.infinity,
+            padding: const EdgeInsets.only(top: 40),
+            decoration: BoxDecoration(
+              color: AppColors.bgPrimary.withValues(alpha: 0.8),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const ShimmerCard(
+                  height: 100,
+                  width: 100,
+                  borderRadius: BorderRadius.all(Radius.circular(50)),
+                ),
+                const SizedBox(height: 16),
+                const ShimmerCard(height: 24, width: 150),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              children: [
+                // Stats Row Shimmer
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: const [
+                    ShimmerCard(height: 60, width: 100, borderRadius: BorderRadius.all(Radius.circular(12))),
+                    ShimmerCard(height: 60, width: 100, borderRadius: BorderRadius.all(Radius.circular(12))),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                
+                // Buttons Shimmer
+                const ShimmerCard(height: 50, borderRadius: BorderRadius.all(Radius.circular(8))),
+                const SizedBox(height: AppSpacing.sm),
+                const ShimmerCard(height: 50, borderRadius: BorderRadius.all(Radius.circular(8))),
+                const SizedBox(height: AppSpacing.md),
+
+                // Info Card Shimmer
+                Container(
+                  padding: const EdgeInsets.all(16),
+                   decoration: BoxDecoration(
+                    color: AppColors.surface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildShimmerInfoRow(),
+                      const SizedBox(height: 16),
+                      _buildShimmerInfoRow(),
+                      const SizedBox(height: 16),
+                      _buildShimmerInfoRow(),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerInfoRow() {
+    return Row(
+      children: const [
+        ShimmerCard(height: 24, width: 24, borderRadius: BorderRadius.all(Radius.circular(4))),
+        SizedBox(width: 16),
+        ShimmerCard(height: 16, width: 80),
+        Spacer(),
+        ShimmerCard(height: 16, width: 120),
+      ],
+    );
+  }
 
   Widget _buildErrorState() {
     return Center(

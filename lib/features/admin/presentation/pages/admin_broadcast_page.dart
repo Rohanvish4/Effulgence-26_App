@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:ui';
 
 import '../../../../core/network/api_client.dart';
@@ -7,6 +6,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../components/common/particle_background.dart';
 import '../../../../components/common/effulgence_background_elements.dart';
+import '../../../event/presentation/cubit/events_cubit.dart';
+import '../../../event/presentation/cubit/events_state.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 enum BroadcastTarget { allUsers, internalUsers, externalUsers }
 
@@ -21,13 +23,16 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
+  final _relatedIdController = TextEditingController();
   BroadcastTarget _selectedTarget = BroadcastTarget.allUsers;
+  String _selectedType = 'ADMIN';
   bool _isLoading = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _messageController.dispose();
+    _relatedIdController.dispose();
     super.dispose();
   }
 
@@ -57,6 +62,10 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
         title: _titleController.text.trim(),
         message: _messageController.text.trim(),
         targetType: targetType,
+        type: _selectedType,
+        relatedId: _relatedIdController.text.trim().isNotEmpty 
+            ? _relatedIdController.text.trim() 
+            : null,
       );
 
       if (mounted) {
@@ -263,6 +272,45 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Notification Type Dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedType,
+                    dropdownColor: AppColors.surface,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
+                      labelText: 'Notification Type',
+                      filled: true,
+                      fillColor: AppColors.surface.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                    ),
+                    items: ['ADMIN', 'EVENT', 'REMINDER', 'SYSTEM']
+                        .map((type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                           _selectedType = value;
+                           // Clear related ID when type changes to avoid confusion
+                           _relatedIdController.clear();
+                        });
+                        if (value == 'EVENT') {
+                          context.read<EventsCubit>().loadEvents();
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
                   // Title Field
                   _buildTextField(
                     controller: _titleController,
@@ -294,6 +342,83 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+
+                  // Related ID Section
+                  if (_selectedType == 'EVENT')
+                    BlocBuilder<EventsCubit, EventsState>(
+                      builder: (context, state) {
+                        if (state.isEventsLoading) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
+                        
+                        // Create a map of events for easy lookup
+                        final events = state.events;
+                        
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DropdownButtonFormField<String>(
+                              dropdownColor: AppColors.surface,
+                              style: const TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'Select Event',
+                                filled: true,
+                                fillColor: AppColors.surface.withOpacity(0.3),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                                ),
+                              ),
+                              items: events.map((event) {
+                                return DropdownMenuItem<String>(
+                                  value: event.id,
+                                  child: Text(
+                                    event.title,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() {
+                                    _relatedIdController.text = value;
+                                  });
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            // Hidden or read-only field to show the actual ID being sent
+                             _buildTextField(
+                              controller: _relatedIdController,
+                              label: 'Event ID (Auto-filled)',
+                              hint: 'Selected event ID',
+                              maxLines: 1,
+                              validator: (value) => null,
+                              enabled: false, // Read-only
+                            ),
+                          ],
+                        );
+                      },
+                    )
+                  else
+                    // Standard Manual Entry for other types
+                    _buildTextField(
+                      controller: _relatedIdController,
+                      label: 'Related ID (Optional)',
+                      hint: 'e.g., User ID',
+                      maxLines: 1,
+                      validator: (value) => null,
+                    ),
                   const SizedBox(height: 32),
 
                   // Send Button
@@ -347,6 +472,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
     required String hint,
     required int maxLines,
     required String? Function(String?) validator,
+    bool enabled = true,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -354,6 +480,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
         child: TextFormField(
           controller: controller,
+          enabled: enabled,
           style: const TextStyle(color: AppColors.textPrimary),
           maxLines: maxLines,
           decoration: InputDecoration(

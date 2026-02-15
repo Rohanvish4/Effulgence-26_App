@@ -1,5 +1,6 @@
 import 'package:effulgence26_mobile_app/features/event/domain/entities/event_params.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/repositories/events_repository.dart';
+import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'events_state.dart';
 
@@ -11,6 +12,9 @@ import 'events_state.dart';
 class EventsCubit extends Cubit<EventsState> {
   // DEPENDENCY: Domain layer repository (business logic interface)
   final EventsRepository eventsRepository;
+  
+  // Debouncer for search operations (prevents duplicate API calls)
+  final Debouncer _searchDebouncer = Debouncer(milliseconds: 500);
 
   EventsCubit(this.eventsRepository) : super(const EventsState());
 
@@ -360,5 +364,44 @@ class EventsCubit extends Cubit<EventsState> {
         ),
       ),
     );
+  }
+
+  /// Debounced search for events (prevents duplicate API calls during rapid typing)
+
+  Future<void> debouncedSearchEvents(String query) async {
+    _searchDebouncer.run(() async {
+      if (query.isEmpty) {
+        emit(state.copyWith(events: [], errorMessage: null));
+        return;
+      }
+
+      emit(
+        state.copyWith(
+          isEventsLoading: true,
+          errorMessage: null,
+          successMessage: null,
+        ),
+      );
+
+      final result = await eventsRepository.searchEvents(query);
+
+      result.fold(
+        (failure) => emit(
+          state.copyWith(isEventsLoading: false, errorMessage: failure.message),
+        ),
+        (events) => emit(
+          state.copyWith(
+            isEventsLoading: false,
+            events: events,
+            status: EventsStatus.success,
+          ),
+        ),
+      );
+    });
+  }
+
+  /// Clean up resources (call in UI dispose method)
+  void cleanup() {
+    _searchDebouncer.dispose();
   }
 }

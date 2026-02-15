@@ -1,7 +1,6 @@
 import 'package:effulgence26_mobile_app/core/utils/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'dart:ui';
 
 import '../../../../core/theme/app_colors.dart';
@@ -48,7 +47,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.bgPrimary.withOpacity(0.8),
+        backgroundColor: AppColors.bgPrimary.withValues(alpha:0.8),
         flexibleSpace: ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -93,7 +92,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.error_outline,
-                        color: AppColors.error.withOpacity(0.8), size: 48),
+                        color: AppColors.error.withValues(alpha:0.8), size: 48),
                     const SizedBox(height: 16),
                     Text(
                       state.message,
@@ -128,14 +127,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppColors.surface.withOpacity(0.3),
+                          color: AppColors.surface.withValues(alpha:0.3),
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2)),
+                              color: AppColors.primary.withValues(alpha:0.2)),
                         ),
                         child: Icon(
                           Icons.notifications_none_rounded,
-                          color: AppColors.textMuted.withOpacity(0.5),
+                          color: AppColors.textMuted.withValues(alpha:0.5),
                           size: 64,
                         ),
                       ),
@@ -193,7 +192,7 @@ class _NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('MMM d, h:mm a');
+
     final isUnread = !notification.isRead;
 
     return Dismissible(
@@ -203,7 +202,7 @@ class _NotificationItem extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.2),
+          color: AppColors.primary.withValues(alpha:0.2),
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Icon(Icons.check_circle_outline, color: AppColors.primary),
@@ -223,13 +222,13 @@ class _NotificationItem extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: isUnread
-              ? AppColors.primary.withOpacity(0.05)
-              : AppColors.surface.withOpacity(0.3),
+              ? AppColors.primary.withValues(alpha:0.05)
+              : AppColors.surface.withValues(alpha:0.3),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isUnread
-                ? AppColors.primary.withOpacity(0.3)
-                : AppColors.border.withOpacity(0.1),
+                ? AppColors.primary.withValues(alpha:0.3)
+                : AppColors.border.withValues(alpha:0.1),
           ),
         ),
         child: ClipRRect(
@@ -240,12 +239,40 @@ class _NotificationItem extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  if (isUnread) {
-                    context
-                        .read<NotificationCubit>()
-                        .markNotificationRead(notification.id);
+                  // Mark as read if unread
+                  // if (isUnread) {
+                  //   context
+                  //       .read<NotificationCubit>()
+                  //       .markNotificationRead(notification.id);
+                  // }
+                  
+                  // Handle navigation based on type and relatedId
+                  if (notification.relatedId != null && 
+                      notification.relatedId!.isNotEmpty) {
+                    
+                    final relatedId = notification.relatedId!;
+                    
+                    switch (notification.type.toUpperCase()) {
+                      case 'EVENT':
+                        // Mark as read if unread
+                        if (isUnread) {
+                          context
+                              .read<NotificationCubit>()
+                              .markNotificationRead(notification.id);
+                        } 
+                        context.pushNamed('eventDetails', pathParameters: {'id': relatedId});
+                        break;
+                      case 'ADMIN':
+                      case 'ALERT':
+                      case 'REMINDER':
+                      case 'SYSTEM':
+                        // No navigation for admin/system notifications
+                        break;
+                      default:
+                        // Unknown type or no specific navigation
+                        break;
+                    }
                   }
-                  // TODO: Handle navigation based on notification.type & relatedId
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -299,7 +326,7 @@ class _NotificationItem extends StatelessWidget {
                             Text(
                               notification.createdAt.formattedDateTime,
                               style: AppTextStyles.labelSmall.copyWith(
-                                color: AppColors.textMuted.withOpacity(0.6),
+                                color: AppColors.textMuted.withValues(alpha:0.6),
                                 fontSize: 10,
                               ),
                             ),
@@ -324,20 +351,23 @@ class _NotificationItem extends StatelessWidget {
     switch (type.toUpperCase()) {
       case 'EVENT':
         iconData = Icons.event_available_rounded;
-        color = const Color(0xFF6C63FF);
-        break;
-      case 'PAYMENT':
-        iconData = Icons.receipt_long_rounded;
-        color = const Color(0xFF00B894);
+        color = const Color(0xFF6C63FF); // Purple
         break;
       case 'ADMIN':
-      case 'SYSTEM':
         iconData = Icons.admin_panel_settings_rounded;
-        color = AppColors.primary;
+        color = const Color(0xFF00B894); // Green
         break;
       case 'ALERT':
-        iconData = Icons.campaign_rounded;
-        color = const Color(0xFFFF7675);
+        iconData = Icons.warning_rounded;
+        color = const Color(0xFFFF7675); // Red
+        break;
+      case 'REMINDER':
+        iconData = Icons.alarm_rounded;
+        color = const Color(0xFFFFB74D); // Orange
+        break;
+      case 'SYSTEM':
+        iconData = Icons.settings_rounded;
+        color = const Color(0xFF2DD4BF); // Teal
         break;
       default:
         iconData = Icons.notifications_rounded;
@@ -347,7 +377,7 @@ class _NotificationItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha:0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(iconData, color: color, size: 20),

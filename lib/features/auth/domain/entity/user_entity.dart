@@ -15,6 +15,7 @@ class UserEntity {
   final String approvalStatus;
   final String? collegeName;
   final String? effulgenceId;
+  final String? registrationId;
   final List<String> managedDomains;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -35,6 +36,7 @@ class UserEntity {
     this.approvalStatus = 'PENDING',
     this.collegeName,
     this.effulgenceId,
+    this.registrationId,
     this.managedDomains = const [],
     this.createdAt,
     this.updatedAt,
@@ -69,6 +71,7 @@ class UserEntity {
     String? approvalStatus,
     String? collegeName,
     String? effulgenceId,
+    String? registrationId,
     List<String>? managedDomains,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -89,6 +92,7 @@ class UserEntity {
       approvalStatus: approvalStatus ?? this.approvalStatus,
       collegeName: collegeName ?? this.collegeName,
       effulgenceId: effulgenceId ?? this.effulgenceId,
+      registrationId: registrationId ?? this.registrationId,
       managedDomains: managedDomains ?? this.managedDomains,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

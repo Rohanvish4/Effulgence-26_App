@@ -5,6 +5,7 @@ class NotificationEntity extends Equatable {
   final String title;
   final String message;
   final String type;
+  final String? relatedId;
   final bool isRead;
   final DateTime createdAt;
 
@@ -13,18 +14,20 @@ class NotificationEntity extends Equatable {
     required this.title,
     required this.message,
     required this.type,
+    this.relatedId,
     required this.isRead,
     required this.createdAt,
   });
 
   @override
-  List<Object?> get props => [id, title, message, type, isRead, createdAt];
+  List<Object?> get props => [id, title, message, type, relatedId, isRead, createdAt];
 
   NotificationEntity copyWith({
     String? id,
     String? title,
     String? message,
     String? type,
+    String? relatedId,
     bool? isRead,
     DateTime? createdAt,
   }) {
@@ -33,6 +36,7 @@ class NotificationEntity extends Equatable {
       title: title ?? this.title,
       message: message ?? this.message,
       type: type ?? this.type,
+      relatedId: relatedId ?? this.relatedId,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt ?? this.createdAt,
     );

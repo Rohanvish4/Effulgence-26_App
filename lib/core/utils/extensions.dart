@@ -42,7 +42,7 @@ extension DateTimeExtensions on DateTime {
 
   /// Format date and time as 'dd MMM yyyy, hh:mm a'
   String get formattedDateTime {
-    return DateFormat('dd MMM yyyy, hh:mm a').format(this);
+    return DateFormat('dd MMM yyyy, hh:mm a').format(toLocal());
   }
 
   /// Check if date is today

@@ -18,6 +18,7 @@ class UserModel extends UserEntity {
     super.approvalStatus,
     super.collegeName,
     super.effulgenceId,
+    super.registrationId,
     super.managedDomains,
     super.createdAt,
     super.updatedAt,
@@ -45,6 +46,7 @@ class UserModel extends UserEntity {
       approvalStatus: json['approvalStatus'] ?? 'PENDING',
       collegeName: json['collegeName'] ?? json['college'],
       effulgenceId: json['effulgenceId'],
+      registrationId: json['registrationId'],
       managedDomains: json['managedDomains'] != null
           ? (json['managedDomains'] is List
                 ? List<String>.from(
@@ -79,6 +81,7 @@ class UserModel extends UserEntity {
       'approvalStatus': approvalStatus,
       'collegeName': collegeName,
       'effulgenceId': effulgenceId,
+      'registrationId': registrationId,
       'managedDomains': managedDomains,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
@@ -103,6 +106,7 @@ class UserModel extends UserEntity {
       approvalStatus: entity.approvalStatus,
       collegeName: entity.collegeName,
       effulgenceId: entity.effulgenceId,
+      registrationId: entity.registrationId,
       managedDomains: entity.managedDomains,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
@@ -127,6 +131,7 @@ class UserModel extends UserEntity {
     String? approvalStatus,
     String? collegeName,
     String? effulgenceId,
+    String? registrationId,
     List<String>? managedDomains,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -147,6 +152,7 @@ class UserModel extends UserEntity {
       approvalStatus: approvalStatus ?? this.approvalStatus,
       collegeName: collegeName ?? this.collegeName,
       effulgenceId: effulgenceId ?? this.effulgenceId,
+      registrationId: registrationId ?? this.registrationId,
       managedDomains: managedDomains ?? this.managedDomains,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

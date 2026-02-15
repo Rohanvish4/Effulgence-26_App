@@ -74,11 +74,9 @@ class _MyAppState extends State<MyApp> {
       // Parallel execution for speed
       final results = await Future.wait([
         AppProviders.getProviders(),
-        // 2G Optimization, Minimum splash duration to allow local DBs to open
-        Future.delayed(const Duration(milliseconds: 800)),
       ]);
 
-      return results[0] as List<SingleChildWidget>;
+      return results[0];
     } catch (e) {
       if (e is UpdateRequiredException) {
         rethrow; // Pass update exception through

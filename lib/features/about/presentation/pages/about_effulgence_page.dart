@@ -183,16 +183,16 @@ class AboutEffulgencePage extends StatelessWidget {
                           ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
-                            "JOIN THE SYNDICATE",
+                            "KNIT Sultanpur, Uttar Pradesh",
                             style: AppTextStyles.labelSmall.copyWith(
                               color: AppColors.primary,
-                              letterSpacing: 4,
+                              letterSpacing: 0,
                             ),
                           ),
-                          const SizedBox(height: 12),
-                          const _SectionText(
-                            text: "KNIT Sultanpur, Uttar Pradesh",
-                          ),
+                          // const SizedBox(height: 12),
+                          // const _SectionText(
+                          //   text: "KNIT Sultanpur, Uttar Pradesh",
+                          // ),
                         ],
                       ),
                     ),

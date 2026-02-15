@@ -5,6 +5,7 @@ import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
 import 'package:effulgence26_mobile_app/components/components.dart';
+import '../widgets/rohan_profile_card.dart';
 
 class ContactUsPage extends StatelessWidget {
   const ContactUsPage({super.key});
@@ -25,26 +26,6 @@ class ContactUsPage extends StatelessWidget {
       "phone": "+91 80762 95221",
       "email": "anshrit.22319@knit.ac.in",
       "social": {"linkedin": "#", "instagram": "#"}
-    },
-    {
-      "name": "Lucky Gautam",
-      "role": "Outreach Executive",
-      "phone": "+91 80762 95221",
-    },
-    {
-      "name": "Ashish Sharma",
-      "role": "Outreach Executive",
-      "phone": "+91 63867 60936",
-    },
-    {
-      "name": "Arsh Ansari",
-      "role": "Outreach Executive",
-      "phone": "+91 73111 40604",
-    },
-    {
-      "name": "Atul Kataria",
-      "role": "Outreach Executive",
-      "phone": "+91 95573 17638",
     },
   ];
 
@@ -93,6 +74,10 @@ class ContactUsPage extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    const SizedBox(height: AppSpacing.xxl),
+
+                    const RohanUltimateCard(),
+
                     const SizedBox(height: AppSpacing.xxl),
                     
                     _buildTeamGrid(_teamMembers),
@@ -158,158 +143,105 @@ class _TeamMemberCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min, // Use min size to wrap content
-        children: [
-          // Image Section - Fixed Aspect Ratio
-          AspectRatio(
-            aspectRatio: 1.0, // Square image
-            child: Container(
-              color: AppColors.surface,
-              child: member['image'] != null
-                  ? Image.network(
-                      member['image'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildPlaceholder(),
-                    )
-                  : _buildPlaceholder(),
-            ),
-          ),
-          // Details Section - Flexible Height
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppColors.surface.withValues(alpha: 0.8),
-                  AppColors.surface,
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Name & Role
-                  Text(
-                    member['name'] ?? '',
-                    style: AppTextStyles.titleSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.2))),
-                    child: Text(
-                      member['role'] ?? '',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: AppColors.primary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+    return AnimatedGradientBorder(
+      borderRadius: AppSpacing.radiusMd,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Image Section with Tech Overlay
+                AspectRatio(
+                  aspectRatio: 0.9,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      member['image'] != null
+                          ? Image.network(member['image'], fit: BoxFit.cover)
+                          : _buildPlaceholder(),
+                      // Bottom Vignette
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              AppColors.surface.withOpacity(0.9),
+                            ],
+                          ),
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Contact Info
-                  if (member['phone'] != null)
-                    _ContactRow(
-                      icon: Icons.phone_rounded,
-                      text: member['phone'],
-                      onTap: () async {
-                        final uri = Uri.parse("tel:${member['phone']}");
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
-                    ),
-                  if (member['email'] != null) ...[
-                    // Add slight spacing if both phone and email exist
-                    if (member['phone'] != null) const SizedBox(height: 4),
-                    _ContactRow(
-                      icon: Icons.email_rounded,
-                      text: member['email'],
-                      onTap: () async {
-                        final uri = Uri.parse("mailto:${member['email']}");
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        }
-                      },
-                    ),
-                  ],
-
-                  // Social Icons
-                  if (member['social'] != null) ...[
-                    const SizedBox(height: 8),
-                    const Divider(height: 12, color: AppColors.divider),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (member['social']['instagram'] != null)
-                          _SocialLink(
-                            icon: FontAwesomeIcons.instagram,
-                            url: member['social']['instagram'],
-                          ),
-                        if (member['social']['linkedin'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: _SocialLink(
-                              icon: FontAwesomeIcons.linkedinIn,
-                              url: member['social']['linkedin'],
-                            ),
-                          ),
-                        if (member['social']['github'] != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: _SocialLink(
-                              icon: FontAwesomeIcons.github,
-                              url: member['social']['github'],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
+                ),
+                // Content Area
+                Padding(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        member['name']?.toUpperCase() ?? '',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        member['role']?.toUpperCase() ?? '',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.primary,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildActionButtons(context),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildActionButtons(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        if (member['phone'] != null)
+          _MiniIconButton(
+            icon: Icons.phone_android_rounded,
+            onTap: () => launchUrl(Uri.parse("tel:${member['phone']}")),
+          ),
+        if (member['email'] != null)
+          _MiniIconButton(
+            icon: Icons.alternate_email_rounded,
+            onTap: () => launchUrl(Uri.parse("mailto:${member['email']}")),
+          ),
+        if (member['social']?['linkedin'] != null)
+          _MiniIconButton(
+            icon: FontAwesomeIcons.linkedinIn,
+            onTap: () => launchUrl(Uri.parse(member['social']['linkedin'])),
+          ),
+      ],
+    );
+  }
+
+    Widget _buildPlaceholder() {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.bgSecondary,
@@ -401,3 +333,131 @@ class _ContactRow extends StatelessWidget {
     );
   }
 }
+class AnimatedGradientBorder extends StatefulWidget {
+  final Widget child;
+  final double borderRadius;
+
+  const AnimatedGradientBorder({
+    super.key,
+    required this.child,
+    this.borderRadius = 12,
+  });
+
+  @override
+  State<AnimatedGradientBorder> createState() => _AnimatedGradientBorderState();
+}
+
+class _AnimatedGradientBorderState extends State<AnimatedGradientBorder>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 4),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _GradientPainter(
+            rotation: _controller.value,
+            radius: widget.borderRadius,
+          ),
+          child: widget.child,
+        );
+      },
+    );
+  }
+}
+
+class _GradientPainter extends CustomPainter {
+  final double rotation;
+  final double radius;
+
+  _GradientPainter({required this.rotation, required this.radius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Rect rect = Offset.zero & size;
+    final Paint paint = Paint()
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    // Laser/Glow effect
+    paint.shader = SweepGradient(
+      colors: [
+        Colors.transparent,
+        AppColors.primary, // Teal
+        AppColors.primary.withOpacity(0.5),
+        Colors.transparent,
+      ],
+      stops: const [0.0, 0.2, 0.4, 1.0],
+      transform: GradientRotation(rotation * 2 * 3.14159),
+    ).createShader(rect);
+
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, Radius.circular(radius)),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GradientPainter oldDelegate) => true;
+}
+
+class _MiniIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _MiniIconButton({
+    super.key,
+    required this.icon,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        splashColor: AppColors.primary.withValues(alpha: 0.2),
+        highlightColor: AppColors.primary.withValues(alpha: 0.1),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.border.withValues(alpha: 0.2),
+              width: 1,
+            ),
+          ),
+          child: Icon(
+            icon,
+            size: 14,
+            color: color ?? AppColors.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+

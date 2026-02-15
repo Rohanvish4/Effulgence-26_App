@@ -232,7 +232,7 @@ class IdCardWidget extends StatelessWidget {
             children: [
               _buildDataField(
                 "REGISTRATION_ID",
-                user.effulgenceId ?? 'PENDING',
+                user.registrationId ?? 'PENDING',
               ),
               _buildDataField(
                 "USER_CLASS",

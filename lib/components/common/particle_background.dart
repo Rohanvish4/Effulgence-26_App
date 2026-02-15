@@ -129,6 +129,8 @@ class _ParticleBackgroundState extends State<ParticleBackground>
   late int _seed;
   late math.Random _random;
   late List<_SpawnedFloatingElement> _spawnedElements;
+  late List<_FieldParticle> _dotParticles;
+  late List<_FieldLine> _lineParticles;
 
   @override
   void initState() {
@@ -141,6 +143,32 @@ class _ParticleBackgroundState extends State<ParticleBackground>
       duration: const Duration(seconds: 20),
       vsync: this,
     )..repeat();
+
+    _initParticles();
+  }
+
+  void _initParticles() {
+    final particleRandom = math.Random(42);
+    _dotParticles = List.generate(50, (_) => _FieldParticle(
+      x: particleRandom.nextDouble(),
+      y: particleRandom.nextDouble(),
+      speed: 0.2 + particleRandom.nextDouble() * 0.3,
+      size: 1.0 + particleRandom.nextDouble() * 2,
+      color: Color.lerp(
+        AppColors.electricBlue,
+        AppColors.royalPurple,
+        particleRandom.nextDouble(),
+      )!.withValues(alpha: 0.3),
+    ));
+
+    _lineParticles = List.generate(20, (_) {
+      return _FieldLine(
+        startX: particleRandom.nextDouble(),
+        startY: particleRandom.nextDouble(),
+        dx: particleRandom.nextDouble() * 100 - 50,
+        dy: particleRandom.nextDouble() * 100 - 50,
+      );
+    });
   }
 
   @override
@@ -175,8 +203,14 @@ class _ParticleBackgroundState extends State<ParticleBackground>
             child: AnimatedBuilder(
               animation: _particleController,
               builder: (context, child) {
-                return CustomPaint(
-                  painter: ParticleFieldPainter(animation: _particleController),
+                return RepaintBoundary(
+                  child: CustomPaint(
+                    painter: ParticleFieldPainter(
+                      animation: _particleController,
+                      dots: _dotParticles,
+                      lines: _lineParticles,
+                    ),
+                  ),
                 );
               },
             ),
@@ -311,54 +345,81 @@ class _ParticleBackgroundState extends State<ParticleBackground>
 
 class ParticleFieldPainter extends CustomPainter {
   final Animation<double> animation;
+  final List<_FieldParticle> dots;
+  final List<_FieldLine> lines;
 
-  ParticleFieldPainter({required this.animation});
+  // Pre-create Paint objects to avoid allocation in paint loop
+  final Paint _dotPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _linePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.5
+    ..color = AppColors.electricBlue.withValues(alpha: 0.1);
+
+  ParticleFieldPainter({
+    required this.animation,
+    required this.dots,
+    required this.lines,
+  }) : super(repaint: animation);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.electricBlue.withValues(alpha: 0.2)
-      ..style = PaintingStyle.fill;
-
-    final random = math.Random(42);
-
     // Draw particles
-    for (var i = 0; i < 50; i++) {
-      final x = random.nextDouble() * size.width;
-      final baseY = random.nextDouble() * size.height;
-      final speed = 0.2 + random.nextDouble() * 0.3;
-      final offset = (animation.value * speed) % 1.0;
-      final y = (baseY + offset * size.height) % size.height;
+    for (final dot in dots) {
+      final x = dot.x * size.width;
+      final offset = (animation.value * dot.speed) % 1.0;
+      final y = ((dot.y + offset) % 1.0) * size.height;
 
-      final particleSize = 1.0 + random.nextDouble() * 2;
+      // Reuse the paint object, only updating color
+      _dotPaint.color = dot.color;
 
       canvas.drawCircle(
         Offset(x, y),
-        particleSize,
-        paint
-          ..color = Color.lerp(
-            AppColors.electricBlue,
-            AppColors.royalPurple,
-            random.nextDouble(),
-          )!.withValues(alpha: 0.3),
+        dot.size,
+        _dotPaint,
       );
     }
 
-    // Draw connecting lines
-    paint.style = PaintingStyle.stroke;
-    paint.strokeWidth = 0.5;
-    paint.color = AppColors.electricBlue.withValues(alpha: 0.1);
+    // Draw connecting lines with the constant paint
+    for (final line in lines) {
+      final startX = line.startX * size.width;
+      final startY = line.startY * size.height;
+      final endX = startX + line.dx;
+      final endY = startY + line.dy;
 
-    for (var i = 0; i < 20; i++) {
-      final startX = random.nextDouble() * size.width;
-      final startY = random.nextDouble() * size.height;
-      final endX = startX + random.nextDouble() * 100 - 50;
-      final endY = startY + random.nextDouble() * 100 - 50;
-
-      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), paint);
+      canvas.drawLine(Offset(startX, startY), Offset(endX, endY), _linePaint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant ParticleFieldPainter oldDelegate) => true; 
+}
+
+class _FieldParticle {
+  final double x;
+  final double y;
+  final double speed;
+  final double size;
+  final Color color;
+
+  _FieldParticle({
+    required this.x,
+    required this.y,
+    required this.speed,
+    required this.size,
+    required this.color,
+  });
+}
+
+class _FieldLine {
+  final double startX;
+  final double startY;
+  final double dx;
+  final double dy;
+
+  _FieldLine({
+    required this.startX,
+    required this.startY,
+    required this.dx,
+    required this.dy,
+  });
 }

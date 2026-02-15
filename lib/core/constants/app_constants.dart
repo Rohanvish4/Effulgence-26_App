@@ -13,6 +13,7 @@ class AppConstants {
   static const String isLoggedInKey = 'is_logged_in';
   static const String themeKey = 'theme_mode';
   static const String onboardingKey = 'onboarding_complete';
+  static const String cachedFcmTokenKey = 'cached_fcm_token';
 
   // Validation
   static const int minPasswordLength = 8;

@@ -189,6 +189,8 @@ class ApiClient {
     required String message,
     String? targetUserId,
     String targetType = 'ALL',
+    String type = 'ADMIN',
+    String? relatedId,
   }) async {
     return await post(
       ApiConstants.broadcastNotification,
@@ -196,7 +198,9 @@ class ApiClient {
         'title': title,
         'message': message,
         'targetType': targetType,
+        'type': type,
         if (targetUserId != null) 'targetUserId': targetUserId,
+        if (relatedId != null && relatedId.isNotEmpty) 'relatedId': relatedId,
       },
     );
   }

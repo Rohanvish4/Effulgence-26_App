@@ -135,14 +135,14 @@ class SidebarMenu extends StatelessWidget {
                 //     onClose();
                 //   },
                 // ),
-                _MenuItem(
-                  icon: Icons.contact_support_outlined,
-                  title: 'Contact Us',
-                  onTap: () {
-                    context.push('/contact');
-                    onClose();
-                  },
-                ),
+                // _MenuItem(
+                //   icon: Icons.contact_support_outlined,
+                //   title: 'Contact Us',
+                //   onTap: () {
+                //     context.push('/contact');
+                //     onClose();
+                //   },
+                // ),
 
                 const Spacer(),
 

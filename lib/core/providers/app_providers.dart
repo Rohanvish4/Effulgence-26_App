@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'dart:io' as io;
 
 import '../network/api_client.dart';
 import '../network/network_info.dart';
@@ -35,17 +39,30 @@ import '../../features/qrcode/presentation/cubit/qr_verification_cubit.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 
+import '../../features/admin/data/datasources/admin_remote_datasource.dart';
+import '../../features/admin/data/repositories/admin_repository_impl.dart';
+import '../../features/admin/domain/repositories/admin_repository.dart';
+import '../../features/admin/presentation/cubit/admin_cubit.dart';
+
 /// App-wide providers and dependency injection
 class AppProviders {
   static Future<List<SingleChildWidget>> getProviders() async {
     // =========================================================================
     // EXTERNAL DEPENDENCIES (Shared across features)
     // =========================================================================
-    final sharedPreferences = await SharedPreferences.getInstance();
+    
+    // Parallelize independent async intializatins 
+    final results = await Future.wait([
+      SharedPreferences.getInstance(),
+      getApplicationDocumentsDirectory(),
+    ]);
+
+    final sharedPreferences = results[0] as SharedPreferences;
+    final appDocDir = results[1] as io.Directory; 
+    
     const flutterSecureStorage = FlutterSecureStorage();
 
     // Initialize persistent cookie jar for session persistence across app restarts
-    final appDocDir = await getApplicationDocumentsDirectory();
     final cookieJar = PersistCookieJar(
       storage: FileStorage('${appDocDir.path}/.cookies/'),
     );
@@ -161,14 +178,26 @@ class AppProviders {
     );
 
     // =========================================================================
+    // FIREBASE CRASHLYTICS - LAZY INITIALIZATION (Non-blocking)
+    // =========================================================================
+    // Initialize Crashlytics after app is ready to improve startup time
+    try {
+      await Future.delayed(const Duration(milliseconds: 100));
+      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    } catch (e) {
+      print("Failed to initialize Crashlytics: $e");
+    }
+
+    // =========================================================================
     // NOTIFICATION SERVICE
     // =========================================================================
     final notificationService = NotificationService(apiClient: apiClient);
-    try {
-      await notificationService.initialize();
-    } catch (e) {
+    // Initialize notification service in the background to avoid blocking app startup
+    notificationService.initialize().then((_) {
+      print("Notification service initialized");
+    }).catchError((e) {
       print("Failed to initialize Notification Service: $e");
-    }
+    });
 
     // =========================================================================
     // NOTIFICATION FEATURE DEPENDENCY INJECTION
@@ -178,6 +207,17 @@ class AppProviders {
       networkInfo: networkInfo,
     );
     final notificationCubit = NotificationCubit(repository: notificationRepository);
+
+    // =========================================================================
+    // ADMIN FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+
+    final adminRemoteDataSource = AdminRemoteDataSourceImpl(apiClient: apiClient);
+    final adminRepository = AdminRepositoryImpl(
+      remoteDataSource: adminRemoteDataSource,
+      networkInfo: networkInfo,
+    );
+    final adminCubit = AdminCubit(repository: adminRepository);
 
     // =========================================================================
     // PROVIDER REGISTRATION (Dependency Injection Container)
@@ -210,9 +250,9 @@ class AppProviders {
       // =========================================================================
       // FUTURE FEATURES: Add more providers here as needed
       // =========================================================================
-      // Example:
-      // Provider<DomainsRepository>.value(value: domainsRepository),
-      // BlocProvider<DomainsCubit>.value(value: domainsCubit),
+      
+      Provider<AdminRepository>.value(value: adminRepository),
+      BlocProvider<AdminCubit>.value(value: adminCubit),
     ];
   }
 }

@@ -5,6 +5,7 @@ import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_st
 
 import 'package:effulgence26_mobile_app/features/event/presentation/cubit/events_cubit.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/cubit/events_state.dart';
+import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,7 +16,7 @@ import '../../../../../components/components.dart';
 
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/countdown_timer_widget.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/faq_widget.dart';
-import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
+
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
@@ -73,7 +74,7 @@ class _HomePageState extends State<HomePage>
     // Use addPostFrameCallback to ensure context is fully ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<AuthCubit>().getCurrentUser();
+// Auth check removed to prevent state flicker (handled in AppProviders)
       // Load events on home tab (will be filtered in UI)
       context.read<EventsCubit>().loadEvents(refresh: true);
     });
@@ -122,13 +123,13 @@ class _HomePageState extends State<HomePage>
       ),],
       expandedHeight: 220,
       pinned: true,
-      // leading: IconButton(
-      //   icon: const Icon(Icons.menu_rounded, color: AppColors.primary),
-      //   onPressed: () {
-      //     Hometab.of(context)?.toggleDrawer();
-      //     HapticFeedback.vibrate();
-      //   },
-      // ),      
+      leading: IconButton(
+        icon: const Icon(Icons.menu_rounded, color: AppColors.primary),
+        onPressed: () {
+          Hometab.of(context)?.toggleDrawer();
+          HapticFeedback.vibrate();
+        },
+      ),      
       backgroundColor: Colors.transparent, // Transparent to show particles
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
@@ -229,15 +230,16 @@ class _HomePageState extends State<HomePage>
         }
       },
       builder: (context, state) {
-        if (state.isEventsLoading) {
+        // Show shimmer if loading OR if we have no events yet (initial state)
+        if (state.isEventsLoading || (state.events.isEmpty && state.errorMessage == null)) {
           return SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               child: SizedBox(
-                height: 220,
+                height: 240, // Match Carousel height
                 child: ShimmerCard(
                   width: double.infinity,
-                  height: 200,
+                  height: 240,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 ),
               ),
@@ -624,6 +626,10 @@ class _HomePageState extends State<HomePage>
       {
         "title": "MEF",
         "desc": "Focused on mechanical design and manufacturing challenges."
+      },
+      {
+        "title": "ESPORTS",
+        "desc": "Organizes competitive gaming tournaments and events."
       },
       {
         "title": "FORONIX",

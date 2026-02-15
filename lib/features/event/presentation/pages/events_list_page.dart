@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
+import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -39,13 +40,14 @@ class _EventsListPageState extends State<EventsListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Debouncing for search
-  DateTime? _lastSearchTime;
-  static const _searchDebounce = Duration(milliseconds: 300);
+  // Debouncing for search (using Debouncer utility)
+  late final Debouncer _searchDebouncer;
 
   @override
   void initState() {
     super.initState();
+    // Initialize debouncer with 500ms delay
+    _searchDebouncer = Debouncer(milliseconds: 500);
     _loadEvents();
     _loadUserParticipations();
   }
@@ -54,6 +56,7 @@ class _EventsListPageState extends State<EventsListPage> {
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
+    _searchDebouncer.dispose();  // Clean up debouncer
     super.dispose();
   }
 
@@ -108,18 +111,14 @@ class _EventsListPageState extends State<EventsListPage> {
     return events;
   }
 
-  /// Handle search with debouncing
+  /// Handle search with debouncing using Debouncer utility
   void _onSearchChanged(String value) {
-    _lastSearchTime = DateTime.now();
-
-    Future.delayed(_searchDebounce, () {
-      if (DateTime.now().difference(_lastSearchTime!) >= _searchDebounce) {
-        setState(() {
-          _searchQuery = value;
-          _cachedFilteredEvents = _getFilteredEvents();
-          _filterChangeKey++;
-        });
-      }
+    _searchDebouncer.run(() {
+      setState(() {
+        _searchQuery = value;
+        _cachedFilteredEvents = _getFilteredEvents();
+        _filterChangeKey++;
+      });
     });
   }
 

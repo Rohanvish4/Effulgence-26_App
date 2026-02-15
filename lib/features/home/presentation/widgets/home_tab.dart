@@ -29,6 +29,7 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _radiusAnimation;
+  late PageController _pageController;
 
   // Drawer state
   bool _isDrawerOpen = false;
@@ -55,11 +56,16 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
       CurvedAnimation(
           parent: _animationController, curve: Curves.easeOutCubic),
     );
+
+    _pageController = PageController(initialPage: _currentIndex);
+    _pageController.addListener(_onPageChanged);
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _pageController.removeListener(_onPageChanged);
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -70,6 +76,13 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
     } else {
       _animationController.reverse();
       setState(() => _isDrawerOpen = false);
+    }
+  }
+
+  void _onPageChanged() {
+    final newIndex = _pageController.page?.round() ?? 0;
+    if (newIndex != _currentIndex) {
+      setState(() => _currentIndex = newIndex);
     }
   }
 
@@ -165,8 +178,9 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
 
         return Scaffold(
           extendBody: true,
-          body: IndexedStack(
-            index: _currentIndex >= pages.length ? 0 : _currentIndex,
+          body: PageView(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
             children: pages,
           ),
           bottomNavigationBar: _buildFloatingNavBar(isAdmin),
@@ -237,9 +251,14 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
   }) {
     final isSelected = _currentIndex == index;
     return GestureDetector(
-      onTap: () => {
-        HapticFeedback.lightImpact(),
-        setState(() => _currentIndex = index)
+      onTap: () {
+        HapticFeedback.lightImpact();
+        // Animate to the selected page
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+        );
       },
       behavior: HitTestBehavior.opaque,
       child: Column(
@@ -273,7 +292,7 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
                         : AppColors.textSecondary,
                     size: isSelected ? 26 : 24,
                   ),
-          ),
+            ),
           if (isSelected)
             Text(
               label,

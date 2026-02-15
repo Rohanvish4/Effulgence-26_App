@@ -14,6 +14,10 @@ class WidgetToPdfService {
 
       // High-resolution capture (3.0 ratio = 300+ DPI equivalent)
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+     
+       // Optimized resolution capture (2.0 ratio = balanced quality/size)
+      // ui.Image image = await boundary.toImage(pixelRatio: 2.0);
+
       ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );
