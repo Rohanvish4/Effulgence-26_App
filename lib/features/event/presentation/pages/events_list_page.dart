@@ -717,6 +717,7 @@ class _EventsListPageState extends State<EventsListPage> {
   }
 
   void _showSnackBar(String message, Color color) {
+     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

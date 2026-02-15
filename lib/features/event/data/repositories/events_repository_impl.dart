@@ -313,4 +313,114 @@ class EventsRepositoryImpl implements EventsRepository {
       return Left(UnknownFailure(message: e.toString()));
     }
   }
+
+  // TEAM MANAGEMENT IMPLEMENTATION
+
+  @override
+  Future<Either<Failure, ParticipationEntity?>> getMyTeam(String eventId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    try {
+      final team = await remoteDataSource.getMyTeam(eventId);
+      return Right(team);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ParticipationEntity>> getTeamDetails(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performRequest(() => remoteDataSource.getTeamDetails(eventId, teamId));
+  }
+
+  @override
+  Future<Either<Failure, void>> removeTeamMember(String eventId, String teamId, String memberId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.removeTeamMember(eventId, teamId, memberId));
+  }
+
+  @override
+  Future<Either<Failure, void>> editTeam(String eventId, String teamId, String teamName, bool isPublic) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.editTeam(eventId, teamId, teamName, isPublic));
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteTeam(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.deleteTeam(eventId, teamId));
+  }
+
+  @override
+  Future<Either<Failure, void>> inviteToTeam(String eventId, String teamId, String email) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.inviteToTeam(eventId, teamId, email));
+  }
+
+  @override
+  Future<Either<Failure, void>> respondToInvite(String eventId, String teamId, String inviteId, String action) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.respondToInvite(eventId, teamId, inviteId, action));
+  }
+
+  @override
+  Future<Either<Failure, void>> requestToJoinTeam(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.requestToJoinTeam(eventId, teamId));
+  }
+
+  @override
+  Future<Either<Failure, void>> respondToJoinRequest(String eventId, String teamId, String requestId, String action) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performVoidRequest(() => remoteDataSource.respondToJoinRequest(eventId, teamId, requestId, action));
+  }
+
+  @override
+  Future<Either<Failure, List<dynamic>>> getTeamInvitations(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performRequest(() => remoteDataSource.getTeamInvitations(eventId, teamId));
+  }
+
+  @override
+  Future<Either<Failure, List<dynamic>>> getTeamJoinRequests(String eventId, String teamId) async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performRequest(() => remoteDataSource.getTeamJoinRequests(eventId, teamId));
+  }
+
+  @override
+  Future<Either<Failure, List<dynamic>>> getMyInvitations() async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performRequest(() => remoteDataSource.getMyInvitations());
+  }
+
+  @override
+  Future<Either<Failure, List<dynamic>>> getMyJoinRequests() async {
+    if (!await networkInfo.isConnected) return const Left(NetworkFailure());
+    return _performRequest(() => remoteDataSource.getMyJoinRequests());
+  }
+
+  // Helper methods to reduce boilerplate
+  Future<Either<Failure, T>> _performRequest<T>(Future<T> Function() request) async {
+    try {
+      final result = await request();
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  Future<Either<Failure, void>> _performVoidRequest(Future<void> Function() request) async {
+    try {
+      await request();
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
 }

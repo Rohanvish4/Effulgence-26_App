@@ -58,6 +58,7 @@ class _LoginPageState extends State<LoginPage> {
                         : state.message,
                   ),
                   backgroundColor: AppColors.success,
+                  duration:  Duration(milliseconds: 500),
                 ),
               );
               // Navigation is handled automatically by app router

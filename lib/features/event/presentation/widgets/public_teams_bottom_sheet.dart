@@ -36,14 +36,17 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
     return BlocConsumer<EventsCubit, EventsState>(
       listener: (context, state) {
         if (state.successMessage != null &&
-            state.successMessage!.toLowerCase().contains("join")) {
+            (state.successMessage!.toLowerCase().contains("join") ||
+             state.successMessage!.toLowerCase().contains("request"))) {
           // Close bottom sheet on success
           Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.successMessage!),
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
+              duration: const Duration(milliseconds: 1500),
             ),
           );
         } else if (state.errorMessage != null &&
@@ -55,11 +58,13 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
             setState(() => _joiningTeamId = null);
             // Close bottom sheet before showing snackbar so it's visible
             Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage!),
                 backgroundColor: AppColors.error,
                 behavior: SnackBarBehavior.floating,
+                duration: const Duration(milliseconds: 1500),
               ),
             );
           }
@@ -226,7 +231,7 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
             isLoading: isJoining && state.isOperationLoading,
             onJoin: () {
               setState(() => _joiningTeamId = team.id);
-              context.read<EventsCubit>().joinTeam(
+              context.read<EventsCubit>().requestToJoinTeam(
                 eventId: widget.event.id,
                 teamId: team.id,
               );
@@ -242,7 +247,7 @@ class _PublicTeamsBottomSheetState extends State<PublicTeamsBottomSheet> {
                   isLoading: isJoining && state.isOperationLoading,
                   onJoin: () {
                     setState(() => _joiningTeamId = team.id);
-                    context.read<EventsCubit>().joinTeam(
+                    context.read<EventsCubit>().requestToJoinTeam(
                       eventId: widget.event.id,
                       teamId: team.id,
                     );

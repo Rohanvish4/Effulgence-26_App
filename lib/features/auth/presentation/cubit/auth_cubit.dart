@@ -1,4 +1,5 @@
 import 'package:effulgence26_mobile_app/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:effulgence26_mobile_app/features/auth/domain/entity/user_entity.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -277,6 +278,16 @@ class AuthCubit extends Cubit<AuthState> {
       );
     } else {
       emit(const AuthUnauthenticated());
+      emit(const AuthUnauthenticated());
     }
+  }
+
+  UserEntity? get currentUser {
+    final s = state;
+    if (s is AuthAuthenticated) return s.user;
+    if (s is AuthRegistrationSuccess) return s.user;
+    if (s is AuthOtpVerified) return s.user;
+    if (s is AuthProfileUpdated) return s.user;
+    return null;
   }
 }

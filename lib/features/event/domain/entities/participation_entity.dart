@@ -27,6 +27,7 @@ class ParticipationEntity {
   final int score;
   final bool isQualified;
   final String? remarks;
+  final bool isPublic;
 
   const ParticipationEntity({
     required this.id,
@@ -42,6 +43,7 @@ class ParticipationEntity {
     required this.score,
     required this.isQualified,
     this.remarks,
+    this.isPublic = false,
   });
 
   // Computed properties

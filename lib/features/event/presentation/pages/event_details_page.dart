@@ -14,6 +14,8 @@ import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 import '../widgets/public_teams_bottom_sheet.dart';
 import '../widgets/team_creation_dialog.dart';
+import 'team_management_page.dart';
+import 'my_invitations_page.dart';
 
 /// Event Details Page - Redesigned with Particle Background & Glassmorphism
 class EventDetailsPage extends StatefulWidget {
@@ -39,8 +41,11 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   }
 
   void _loadData() {
-    context.read<EventsCubit>().getEventDetails(widget.eventId);
-    context.read<EventsCubit>().loadMyParticipations();
+    final cubit = context.read<EventsCubit>();
+    cubit.getEventDetails(widget.eventId);
+    cubit.loadMyParticipations();
+    cubit.getMyTeam(widget.eventId);
+    cubit.getMyJoinRequests(); // Fetch pending join requests
   }
 
   @override
@@ -77,7 +82,12 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
                 !state.isDetailsLoading &&
                 !state.isOperationLoading) {
               if (_event != null) {
-                _showSnackBar(state.errorMessage!, AppColors.error);
+                if(state.errorMessage!.contains("not")) {
+                  // _showSnackBar("hello", AppColors.primary);
+                } else {
+                  _showSnackBar(state.errorMessage!, AppColors.error);
+                }
+                
               }
             }
 
@@ -518,57 +528,145 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
 
     if (_registeredEventIds.contains(event.id)) {
-      return Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.success.withValues(alpha: 0.15),
-              AppColors.success.withValues(alpha: 0.08),
-            ],
+      return Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.success.withValues(alpha: 0.15),
+                  AppColors.success.withValues(alpha: 0.08),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: AppColors.success.withValues(alpha: 0.4),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.success.withValues(alpha: 0.2),
+                  blurRadius: 15,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: AppColors.success,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Text(
+                  'You are registered!',
+                  style: AppTextStyles.titleMedium.copyWith(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          border: Border.all(
-            color: AppColors.success.withValues(alpha: 0.4),
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.success.withValues(alpha: 0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 4),
+          if (event.isTeam) ...[
+            const SizedBox(height: AppSpacing.md),
+             AppButton(
+              text: 'MANAGE TEAM',
+              icon: Icons.settings,
+              backgroundColor: AppColors.secondary,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => TeamManagementPage(eventId: event.id),
+                  ),
+                ).then((_) => _loadData());
+              },
             ),
           ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle,
-                color: AppColors.success,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              'You are registered!',
-              style: AppTextStyles.titleMedium.copyWith(
-                color: AppColors.success,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
+        ],
       );
     }
 
     if (event.isTeam) {
+      // Check if user has a pending join request for this event
+      final hasPendingRequest = state.myJoinRequests.any((teamData) {
+        final evt = teamData['event'];
+        final eventId = evt is Map ? (evt['_id']?.toString() ?? '') : '';
+        final requests = teamData['joinRequests'] as List<dynamic>? ?? [];
+        return eventId == event.id && requests.any((r) => r['status'] == 'PENDING');
+      });
+
+      if (hasPendingRequest) {
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.hourglass_top, color: Colors.orange, size: 24),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Join Request Pending',
+                          style: AppTextStyles.titleMedium.copyWith(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Waiting for team leader to accept your request.',
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                ],
+              ),
+
+               AppTextButton(
+            text: 'Check My Invitations',
+            icon: Icons.mail,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MyInvitationsPage(),
+                ),
+              );
+            },
+          )
+            ],
+          ),
+        );
+      }
+
       return Column(
         children: [
           GradientButton(
@@ -577,7 +675,6 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
             isLoading: state.isOperationLoading,
             onPressed: () {
               _showTeamCreationDialog(context, event.id);
-              setState(() {});
             },
           ),
           const SizedBox(height: AppSpacing.md),
@@ -586,6 +683,18 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
             icon: Icons.groups,
             onPressed: () => _showPublicTeamsSheet(context, event),
           ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextButton(
+            text: 'Check My Invitations',
+            icon: Icons.mail,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const MyInvitationsPage(),
+                ),
+              );
+            },
+          )
         ],
       );
     }
@@ -676,6 +785,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   }
 
   void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -685,6 +795,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         ),
         margin: const EdgeInsets.all(AppSpacing.md),
+        duration: const Duration(milliseconds: 1500),
       ),
     );
   }

@@ -55,4 +55,45 @@ abstract class EventsRepository {
   Future<Either<Failure, List<ParticipationEntity>>> getEventRegistrations(
     String eventId,
   );
+
+  // NEW TEAM MANAGEMENT METHODS matched with RemoteDataSource
+  
+  /// Get my team details for a specific event
+  Future<Either<Failure, ParticipationEntity?>> getMyTeam(String eventId);
+
+  /// Get details of a specific team
+  Future<Either<Failure, ParticipationEntity>> getTeamDetails(String eventId, String teamId);
+
+  /// Remove a member from the team (Kick)
+  Future<Either<Failure, void>> removeTeamMember(String eventId, String teamId, String memberId);
+
+  /// Edit team details
+  Future<Either<Failure, void>> editTeam(String eventId, String teamId, String teamName, bool isPublic);
+
+  /// Delete/Disband a team
+  Future<Either<Failure, void>> deleteTeam(String eventId, String teamId);
+
+  /// Invite a user to the team by email
+  Future<Either<Failure, void>> inviteToTeam(String eventId, String teamId, String email);
+
+  /// Respond to a team invitation
+  Future<Either<Failure, void>> respondToInvite(String eventId, String teamId, String inviteId, String action);
+
+  /// Request to join a team
+  Future<Either<Failure, void>> requestToJoinTeam(String eventId, String teamId);
+
+  /// Respond to a join request
+  Future<Either<Failure, void>> respondToJoinRequest(String eventId, String teamId, String requestId, String action);
+
+  /// Get pending invitations for my team (Creator only)
+  Future<Either<Failure, List<dynamic>>> getTeamInvitations(String eventId, String teamId);
+
+  /// Get pending join requests for my team (Creator only)
+  Future<Either<Failure, List<dynamic>>> getTeamJoinRequests(String eventId, String teamId);
+
+  /// Get my pending invitations across all events
+  Future<Either<Failure, List<dynamic>>> getMyInvitations();
+
+  /// Get my pending join requests across all events
+  Future<Either<Failure, List<dynamic>>> getMyJoinRequests();
 }
