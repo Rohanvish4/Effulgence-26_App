@@ -8,7 +8,7 @@ import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_text_styles.dart';
-import 'core/services/update_service.dart';
+import 'core/services/remote_config_service.dart';
 import 'features/update/presentation/pages/update_required_page.dart';
 
 class MyApp extends StatefulWidget {
@@ -20,7 +20,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late Future<List<SingleChildWidget>> _providersFuture;
-  final UpdateService _updateService = UpdateService();
+  final RemoteConfigService _remoteConfigService = RemoteConfigService();
 
   @override
   void initState() {
@@ -48,7 +48,7 @@ class _MyAppState extends State<MyApp> {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               theme: AppTheme.darkTheme,
-              home: UpdateRequiredPage(updateService: _updateService),
+              home: UpdateRequiredPage(remoteConfigService: _remoteConfigService),
             );
           }
           return _buildGlobalErrorBuilder(snapshot.error.toString());
@@ -56,18 +56,24 @@ class _MyAppState extends State<MyApp> {
 
         final providers = snapshot.data ?? [];
 
-        return MultiProvider(providers: providers, child: const _AppContent());
+        return MultiProvider(
+          providers: [
+            ...providers,
+            Provider<RemoteConfigService>.value(value: _remoteConfigService),
+          ],
+          child: const _AppContent(),
+        );
       },
     );
   }
 
   Future<List<SingleChildWidget>> _initializeApp() async {
     try {
-      // Initialize Update Service early
-      await _updateService.initialize();
+      // Initialize Remote Config Service early
+      await _remoteConfigService.initialize();
 
       // Check for forced update
-      if (await _updateService.isUpdateRequired()) {
+      if (await _remoteConfigService.isUpdateRequired()) {
         throw UpdateRequiredException();
       }
 
@@ -112,7 +118,7 @@ class _MyAppState extends State<MyApp> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'We\'re having trouble reaching the server. Check your 2G/3G connection.',
+                  'We\'re having trouble reaching the server. Check your internet  connection.',
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondary,

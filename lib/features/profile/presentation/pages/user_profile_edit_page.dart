@@ -4,11 +4,13 @@ import 'package:effulgence26_mobile_app/features/profile/presentation/cubit/prof
 import 'package:effulgence26_mobile_app/features/profile/presentation/cubit/profile_state.dart';
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:effulgence26_mobile_app/features/profile/domain/entities/user_profile_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../components/loading/loading_indicators.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -127,9 +129,13 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        setState(() {
-          _pickedImage = File(image.path);
-        });
+        final croppedFile = await _cropImage(File(image.path));
+        
+        if (croppedFile != null && mounted) {
+          setState(() {
+            _pickedImage = croppedFile;
+          });
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -138,6 +144,47 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
         ).showSnackBar(SnackBar(content: Text("Failed to pick image: $e")));
       }
     }
+  }
+
+  Future<File?> _cropImage(File imageFile) async {
+    try {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: imageFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Edit Photo',
+            toolbarColor: AppColors.bgPrimary,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            backgroundColor: AppColors.bgSecondary,
+            activeControlsWidgetColor: AppColors.primary,
+            dimmedLayerColor: Colors.black.withOpacity(0.8),
+            cropFrameColor: AppColors.primary,
+            cropGridColor: AppColors.primary.withOpacity(0.5),
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Edit Photo',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+            rectX: 0.0,
+            rectY: 0.0,
+            rectWidth: 1080.0,
+            rectHeight: 1080.0,
+            minimumAspectRatio: 1.0,
+          ),
+        ],
+      );
+      
+      if (croppedFile != null) {
+        return File(croppedFile.path);
+      }
+    } catch (e) {
+      debugPrint('Error cropping image: $e');
+    }
+    return null;
   }
 
   void _saveProfile() {
@@ -345,8 +392,8 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
     ImageProvider? imageProvider;
     if (_pickedImage != null) {
       imageProvider = FileImage(_pickedImage!);
-    } else if (currentImageUrl != null && currentImageUrl.isNotEmpty) {
-      imageProvider = CachedNetworkImageProvider(currentImageUrl);
+    } else if (UrlUtils.isValidUrl(currentImageUrl)) {
+      imageProvider = CachedNetworkImageProvider(currentImageUrl!);
     }
 
     return Center(

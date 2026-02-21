@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:flutter/material.dart';
 
 class EventCard extends StatelessWidget {
@@ -144,9 +145,11 @@ class EventCard extends StatelessWidget {
     final height = AppSpacing.cardImageHeight;
 
     Widget imageWidget;
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    final validUrl = UrlUtils.isValidUrl(imageUrl) ? imageUrl : null;
+
+    if (validUrl != null) {
       imageWidget = CachedNetworkImage(
-        imageUrl: imageUrl!,
+        imageUrl: validUrl,
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,

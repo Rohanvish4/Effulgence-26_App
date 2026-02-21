@@ -152,7 +152,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
           ),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.bgPrimary.withOpacity(0.8),
+        backgroundColor: AppColors.bgPrimary.withValues(alpha:0.8),
         flexibleSpace: ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -176,7 +176,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha:0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -227,13 +227,13 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppColors.primary.withOpacity(0.15)
-                                    : AppColors.surface.withOpacity(0.3),
+                                    ? AppColors.primary.withValues(alpha:0.15)
+                                    : AppColors.surface.withValues(alpha:0.3),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppColors.primary
-                                      : AppColors.border.withOpacity(0.2),
+                                      : AppColors.border.withValues(alpha:0.2),
                                   width: isSelected ? 2 : 1,
                                 ),
                               ),
@@ -280,7 +280,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                     decoration: InputDecoration(
                       labelText: 'Notification Type',
                       filled: true,
-                      fillColor: AppColors.surface.withOpacity(0.3),
+                      fillColor: AppColors.surface.withValues(alpha:0.3),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -369,7 +369,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
                               decoration: InputDecoration(
                                 labelText: 'Select Event',
                                 filled: true,
-                                fillColor: AppColors.surface.withOpacity(0.3),
+                                fillColor: AppColors.surface.withValues(alpha:0.3),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide.none,
@@ -488,9 +488,9 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
             hintText: hint,
             alignLabelWithHint: maxLines > 1,
             labelStyle: TextStyle(color: AppColors.textMuted),
-            hintStyle: TextStyle(color: AppColors.textMuted.withOpacity(0.5)),
+            hintStyle: TextStyle(color: AppColors.textMuted.withValues(alpha:0.5)),
             filled: true,
-            fillColor: AppColors.surface.withOpacity(0.3),
+            fillColor: AppColors.surface.withValues(alpha:0.3),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -501,7 +501,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.error.withOpacity(0.5)),
+              borderSide: BorderSide(color: AppColors.error.withValues(alpha:0.5)),
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

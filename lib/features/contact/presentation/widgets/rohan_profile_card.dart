@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_assets.dart';
 import '../../../../components/components.dart';
+import '../../../../core/utils/url_utils.dart';
 
 
 class Tilt3DWrapper extends StatefulWidget {
@@ -147,12 +148,14 @@ class RohanUltimateCard extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 46,
               backgroundColor: AppColors.primary,
               child: CircleAvatar(
                 radius: 44,
-                backgroundImage: NetworkImage("https://media.licdn.com/dms/image/v2/D5603AQFpqtKhkTK-0Q/profile-displayphoto-shrink_200_200/B56ZT8Sp2YHEAc-/0/1739399537807?e=2147483647&v=beta&t=Jk-qCM4cs1XB3RfKuXVr9IrWQ-B0tJUF3fYePM68EVY"),
+                backgroundImage: UrlUtils.isValidUrl("https://media.licdn.com/dms/image/v2/D5603AQFpqtKhkTK-0Q/profile-displayphoto-shrink_200_200/B56ZT8Sp2YHEAc-/0/1739399537807?e=2147483647&v=beta&t=Jk-qCM4cs1XB3RfKuXVr9IrWQ-B0tJUF3fYePM68EVY")
+                    ? const NetworkImage("https://media.licdn.com/dms/image/v2/D5603AQFpqtKhkTK-0Q/profile-displayphoto-shrink_200_200/B56ZT8Sp2YHEAc-/0/1739399537807?e=2147483647&v=beta&t=Jk-qCM4cs1XB3RfKuXVr9IrWQ-B0tJUF3fYePM68EVY")
+                    : null,
               ),
             ),
             // Floating Micro-badges around avatar

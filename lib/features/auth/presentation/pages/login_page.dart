@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../components/components.dart';
 
+import '../../../../core/constants/app_env.dart';
 import '../../../../core/theme/app_assets.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -62,6 +63,13 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               );
               // Navigation is handled automatically by app router
+            } else if (state is GoogleUserNotRegistered) {
+              context.push('/register', extra: {
+                'idToken': state.idToken,
+                'email': state.email,
+                'name': state.name,
+                'photoUrl': state.photoUrl,
+              });
             } else if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -82,17 +90,17 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: AppSpacing.xl),
-
+                
                     // Logo and branding
                     Center(
                       child: Column(
                         children: [
-                          SvgPicture.asset(
-                            AppAssets.logo,
-                            width: 100,
-                            height: 100,
-                          ),
+                          Image.asset(
+                        AppAssets.logoPng,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
                           const SizedBox(height: AppSpacing.md),
                           SvgPicture.asset(AppAssets.textSvg, width: 180),
                           const SizedBox(height: AppSpacing.xs),
@@ -100,14 +108,14 @@ class _LoginPageState extends State<LoginPage> {
                             'INNOVATION AND BEYOND',
                             style: AppTextStyles.labelSmall.copyWith(
                               letterSpacing: 2.5,
-                              color: AppColors.textMuted,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: AppSpacing.xxl),
+                    const SizedBox(height: AppSpacing.sm),
 
                     // Login form in glassmorphism container
                     Container(
@@ -151,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
                               textAlign: TextAlign.center,
                             ),
 
-                            const SizedBox(height: AppSpacing.xl),
+                            const SizedBox(height: AppSpacing.md),
 
                             // Email Field
                             AppTextField(
@@ -187,8 +195,9 @@ class _LoginPageState extends State<LoginPage> {
                                 onPressed: () {
                                   launchUrl(
                                     Uri.parse(
-                                      'https://www.effulgence26.in/forgot-password',
+                                      AppEnv.forgotPasswordUrl,
                                     ),
+                                    mode: LaunchMode.inAppBrowserView,
                                   );
                                 },
                                 child: Text(
@@ -200,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
 
-                            const SizedBox(height: AppSpacing.lg),
+                            const SizedBox(height: AppSpacing.sm),
 
                             // Login Button
                             GradientButton(
@@ -208,17 +217,36 @@ class _LoginPageState extends State<LoginPage> {
                               isLoading: state is AuthLoading,
                               onPressed: _onLogin,
                             ),
+
+                            const SizedBox(height: AppSpacing.md),
+
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: AppColors.borderLight)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                                  child: Text(
+                                    'OR', 
+                                    style: AppTextStyles.labelSmall.copyWith(color: AppColors.textMuted),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: AppColors.borderLight)),
+                              ],
+                            ),
+
+                            const SizedBox(height: AppSpacing.md),
+
+                            // Google Sign In Button
+                            GoogleButton(
+                              onPressed: () {
+                                context.read<AuthCubit>().googleLogin();
+                              },
+                              isLoading: state is AuthLoading,
+                            ),
                           ],
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: AppSpacing.lg),
-
-                    // Divider
-                    const DividerWithText(text: 'OR'),
-
-                    const SizedBox(height: AppSpacing.lg),
 
                     // Register Link
                     Row(
@@ -243,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
 
-                    const SizedBox(height: AppSpacing.xl),
+                    const SizedBox(height: AppSpacing.md),
                   ],
                 ),
               ),

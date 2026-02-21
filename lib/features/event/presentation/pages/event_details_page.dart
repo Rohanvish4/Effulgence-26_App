@@ -3,6 +3,10 @@ import 'package:effulgence26_mobile_app/features/event/domain/entities/event_ent
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:ui'; // For BackdropFilter
+
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:html_unescape/html_unescape_small.dart';
 import '../../../../components/components.dart';
 
@@ -16,8 +20,8 @@ import '../widgets/public_teams_bottom_sheet.dart';
 import '../widgets/team_creation_dialog.dart';
 import 'team_management_page.dart';
 import 'my_invitations_page.dart';
+import '../../../../core/presentation/pages/pdf_viewer_page.dart';
 
-/// Event Details Page - Redesigned with Particle Background & Glassmorphism
 class EventDetailsPage extends StatefulWidget {
   final String eventId;
 
@@ -31,8 +35,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
   List<String> _registeredEventIds = [];
   EventEntity? _event;
   bool _isDialogVisible = false;
-
-   final unescape = HtmlUnescape();
+  final unescape = HtmlUnescape();
 
   @override
   void initState() {
@@ -45,7 +48,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     cubit.getEventDetails(widget.eventId);
     cubit.loadMyParticipations();
     cubit.getMyTeam(widget.eventId);
-    cubit.getMyJoinRequests(); // Fetch pending join requests
+    cubit.getMyJoinRequests();
   }
 
   @override
@@ -55,92 +58,63 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       body: ParticleBackground(
         child: BlocConsumer<EventsCubit, EventsState>(
           listener: (context, state) {
-            // Event Details Loaded
             if (state.selectedEvent != null) {
               setState(() => _event = state.selectedEvent);
             }
 
-            // Success Messages
             if (state.successMessage != null) {
               _showSnackBar(state.successMessage!, AppColors.success);
-
-              // Handle Team Creation Success - Close Dialog
-              if (state.successMessage!.toLowerCase().contains(
-                    'team created',
-                  ) &&
-                  _isDialogVisible) {
+              if (state.successMessage!.toLowerCase().contains('team created') && _isDialogVisible) {
                 Navigator.of(context).pop();
                 _isDialogVisible = false;
               }
-
-              _loadData(); // Refresh data
+              _loadData();
             }
 
-            // Error Messages
-            if (state.errorMessage != null &&
-                !state.isEventsLoading &&
-                !state.isDetailsLoading &&
-                !state.isOperationLoading) {
+            if (state.errorMessage != null && !state.isEventsLoading && !state.isDetailsLoading && !state.isOperationLoading) {
               if (_event != null) {
-                if(state.errorMessage!.contains("not")) {
-                  // _showSnackBar("hello", AppColors.primary);
-                } else {
-                  _showSnackBar(state.errorMessage!, AppColors.error);
+                String error = state.errorMessage!.contains("is not approved") 
+                    ? "You Cannot Register for event until your profile is verified." 
+                    : state.errorMessage!;
+                if(!state.errorMessage!.contains("You are not part of any team")) {
+                   _showSnackBar(error, AppColors.error);
                 }
-                
               }
             }
 
-            // My Participations Loaded
-            if (state.myParticipations.isNotEmpty ||
-                (!state.isParticipationsLoading &&
-                    state.myParticipations.isEmpty)) {
+            if (state.myParticipations.isNotEmpty || (!state.isParticipationsLoading && state.myParticipations.isEmpty)) {
               setState(() {
-                _registeredEventIds = state.myParticipations
-                    .map((p) => p.eventId)
-                    .toList();
+                _registeredEventIds = state.myParticipations.map((p) => p.eventId).toList();
               });
             }
           },
           builder: (context, state) {
             if (state.isDetailsLoading && _event == null) {
-              return const FullScreenLoading(
-                message: 'Loading event details...',
-              );
-            }
-
-            if (state.errorMessage != null && _event == null) {
-              return Scaffold(
-                backgroundColor: Colors.transparent,
-                appBar: AppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                ),
-                body: ErrorState(
-                  message: state.errorMessage!,
-                  onRetry: _loadData,
-                ),
-              );
+              return const FullScreenLoading(message: 'Summoning event details...');
             }
 
             final event = _event;
             if (event != null) {
-              return RefreshIndicator(
-                onRefresh: () async => _loadData(),
-                color: AppColors.primary,
-                backgroundColor: AppColors.bgSecondary,
-                child: CustomScrollView(
-                  slivers: [
-                    _buildSliverAppBar(event),
-                    SliverToBoxAdapter(
-                      child: _buildContent(context, event, state),
+              return Stack(
+                children: [
+                  RefreshIndicator(
+                    onRefresh: () async => _loadData(),
+                    color: AppColors.primary,
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        _buildSliverAppBar(event),
+                        SliverToBoxAdapter(
+                          child: _buildContent(context, event, state),
+                        ),
+                        const SliverPadding(padding: EdgeInsets.only(bottom: 140)),
+                      ],
                     ),
-                    const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-                  ],
-                ),
+                  ),
+                  _buildBottomActionOverlay(context, event, state),
+                ],
               );
             }
-
             return const SizedBox.shrink();
           },
         ),
@@ -150,63 +124,49 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
 
   Widget _buildSliverAppBar(EventEntity event) {
     return SliverAppBar(
-      expandedHeight: 300,
+      expandedHeight: 340,
       pinned: true,
       stretch: true,
-      backgroundColor: Colors.transparent,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppColors.bgPrimary.withValues(alpha: 0.5),
-          shape: BoxShape.circle,
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+       backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      leading: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: Colors.white.withOpacity(0.1),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
         ),
       ),
       flexibleSpace: FlexibleSpaceBar(
-        stretchModes: const [StretchMode.zoomBackground],
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
         background: Stack(
           fit: StackFit.expand,
           children: [
             Hero(
               tag: 'event_card_${event.id}',
-              child: event.coverImage != null
+              child: UrlUtils.isValidUrl(event.coverImage)
                   ? CachedNetworkImage(
                       imageUrl: event.coverImage!,
                       fit: BoxFit.cover,
-                      placeholder: (context, url) =>
-                          Container(color: AppColors.bgSecondary),
-                      errorWidget: (context, url, error) => Container(
-                        color: AppColors.bgSecondary,
-                        child: Image.asset(
-                          AppAssets.logoPng,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
+                      errorWidget: (context, url, error) => Image.asset(AppAssets.logoPng, fit: BoxFit.cover),
                     )
-                  : Container(
-                      color: AppColors.bgSecondary,
-                      child: const Icon(
-                        Icons.event,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                  : Container(color: AppColors.bgSecondary, child: const Icon(Icons.event, size: 64)),
             ),
-            // Gradient Overlay
-            DecoratedBox(
+            // Improved Gradient Transition
+            const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    AppColors.bgPrimary.withValues(alpha: 0.2),
-                    AppColors.bgPrimary,
-                  ],
-                  stops: const [0.5, 0.8, 1.0],
+                  colors: [Colors.transparent, Colors.black45, AppColors.bgPrimary],
+                  stops: [0.4, 0.7, 1.0],
                 ),
               ),
             ),
@@ -216,164 +176,109 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    EventEntity event,
-    EventsState state,
-  ) {
+  Widget _buildContent(BuildContext context, EventEntity event, EventsState state) {
     return Padding(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Section
+          // Event Identity
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: AppSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.secondary.withValues(alpha: 0.2),
-                            AppColors.secondary.withValues(alpha: 0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusSm,
-                        ),
-                        border: Border.all(
-                          color: AppColors.secondary.withValues(alpha: 0.6),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.secondary.withValues(alpha: 0.2),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            event.isTeam ? Icons.groups : Icons.person,
-                            size: 16,
-                            color: AppColors.secondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            event.eventType,
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
                     Text(
-                      event.title,
-                      style: AppTextStyles.headlineLarge.copyWith(height: 1.1),
+                      event.domainName.toUpperCase(),
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary, letterSpacing: 2.0, fontWeight: FontWeight.w800),
                     ),
+                    const SizedBox(height: 4),
+                    Text(event.title, style: AppTextStyles.headlineLarge.copyWith(height: 1.2, fontWeight: FontWeight.w900)),
                   ],
                 ),
               ),
               StatusBadge(status: event.status),
             ],
           ),
-
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            event.domainName,
-            style: AppTextStyles.titleMedium.copyWith(
-              color: AppColors.primary,
-              letterSpacing: 1.0,
+          
+          const SizedBox(height: AppSpacing.md),
+          
+          // Event Type Chip (Solo/Team)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(event.isTeam ? Icons.groups_rounded : Icons.person_rounded, size: 14, color: AppColors.secondary),
+                const SizedBox(width: 6),
+                Text(event.eventType, style: AppTextStyles.labelSmall.copyWith(color: AppColors.secondary, fontWeight: FontWeight.bold)),
+              ],
             ),
           ),
 
           const SizedBox(height: AppSpacing.xl),
-
-          // Info Grid
           _buildInfoGrid(event),
-
           const SizedBox(height: AppSpacing.xl),
-
-          // Description
-          if (event.description != null && event.description!.isNotEmpty) ...[
-            _buildSectionTitle('About Event'),
+          _buildExternalLinks(event),
+          
+         // Description section
+if (event.description != null && event.description!.isNotEmpty) ...[
+            _buildSectionTitle('The Brief'),
             const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.bgSecondary.withValues(alpha: 0.6),
-                    AppColors.bgSecondary.withValues(alpha: 0.4),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(
-                  color: AppColors.border.withValues(alpha: 0.5),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            _buildGlassSection(
               child: Text(
                 unescape.convert(event.description!),
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.7,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-          ],
-
-          // Rules
-          if (event.rules != null && event.rules!.isNotEmpty) ...[
-            _buildSectionTitle('Rules & Guidelines'),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.bgSecondary,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Text(
-                event.rules!,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
+                  color: AppColors.textSecondary.withOpacity(0.9),
+                  height: 1.8,
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
 
-          // Registration Section
-          _buildRegistrationSection(context, event, state),
+          // Rules section (The one you might have missed)
+          if (event.rules != null && event.rules!.isNotEmpty) ...[
+            _buildSectionTitle('Rules & Guidelines'),
+            const SizedBox(height: AppSpacing.md),
+            _buildGlassSection(
+              child: Text(
+                event.rules!,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary.withOpacity(0.8),
+                  height: 1.6,
+                ),
+              ),
+            ),
+          ],
+          if (event.contacts != null && event.contacts!.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xl),
+            _buildSectionTitle('Organizers'),
+            const SizedBox(height: AppSpacing.md),
+            _buildContactsList(event),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildGlassSection({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.bgSecondary.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: child,
     );
   }
 
@@ -382,80 +287,30 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
       children: [
         Row(
           children: [
-            Expanded(
-              child: _buildGlassInfoCard(
-                icon: Icons.calendar_today,
-                title: 'Date',
-                value: event.eventTime.formattedDateTime,
-                color: AppColors.electricBlue,
-              ),
-            ),
+            Expanded(child: _buildGlassInfoCard(Icons.calendar_month_rounded, 'Date', event.eventTime.formattedDateTime, AppColors.electricBlue)),
             const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: _buildGlassInfoCard(
-                icon: Icons.location_on,
-                title: 'Venue',
-                value: event.venue,
-                color: AppColors.crimsonRed,
-              ),
-            ),
+            Expanded(child: _buildGlassInfoCard(Icons.location_on_rounded, 'Venue', event.venue, AppColors.crimsonRed)),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        _buildGlassInfoCard(
-          icon: Icons.timer_outlined,
-          title: 'Deadline',
-          value: event.registrationDeadline.formattedDateTime,
-          color: AppColors.secondary,
-          isFullWidth: true,
-        ),
+        _buildGlassInfoCard(Icons.alarm_on_rounded, 'Registration Deadline', event.registrationDeadline.formattedDateTime, AppColors.secondary, isFullWidth: true),
         if (event.isTeam) ...[
           const SizedBox(height: AppSpacing.md),
-          _buildGlassInfoCard(
-            icon: Icons.groups,
-            title: 'Team Size',
-            value: '${event.minTeamSize} - ${event.maxTeamSize} Members',
-            color: AppColors.royalPurple,
-            isFullWidth: true,
-          ),
+          _buildGlassInfoCard(Icons.diversity_3_rounded, 'Squad Size', '${event.minTeamSize} to ${event.maxTeamSize} Members', AppColors.royalPurple, isFullWidth: true),
         ],
       ],
     );
   }
 
-  Widget _buildGlassInfoCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    bool isFullWidth = false,
-  }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      width: isFullWidth ? double.infinity : null,
+  Widget _buildGlassInfoCard(IconData icon, String title, String value, Color color, {bool isFullWidth = false}) {
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.bgSecondary.withValues(alpha: 0.7),
-            AppColors.bgSecondary.withValues(alpha: 0.5),
-          ],
-        ),
+        color: AppColors.bgSecondary.withOpacity(0.5),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(color: color.withOpacity(0.2)),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.15),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -463,134 +318,69 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      color.withValues(alpha: 0.2),
-                      color.withValues(alpha: 0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  title.toUpperCase(),
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: AppColors.textMuted,
-                    fontSize: 10,
-                    letterSpacing: 1.2,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 8),
+              Text(title.toUpperCase(), style: AppTextStyles.labelSmall.copyWith(color: AppColors.textMuted, fontSize: 10, letterSpacing: 1.1)),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            style: AppTextStyles.bodyMedium.copyWith(
-              fontWeight: FontWeight.w600,
-              height: 1.4,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          const SizedBox(height: 10),
+          Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
   }
 
-  Widget _buildRegistrationSection(
-    BuildContext context,
-    EventEntity event,
-    EventsState state,
-  ) {
+  Widget _buildBottomActionOverlay(BuildContext context, EventEntity event, EventsState state) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.bgPrimary.withOpacity(0.8),
+              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+            ),
+            child: _buildRegistrationActions(context, event, state),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Refined Registration Actions for UX clarity
+  Widget _buildRegistrationActions(BuildContext context, EventEntity event, EventsState state) {
     if (!event.canRegister) {
-      return AppButton(
-        text: event.isCompleted ? 'EVENT ENDED' : 'REGISTRATION CLOSED',
-        onPressed: null,
-        isFullWidth: true,
-        backgroundColor: AppColors.bgSecondary,
-        textColor: AppColors.textDisabled,
-      );
+       return Container(
+         width: double.infinity,
+         padding: const EdgeInsets.symmetric(vertical: 16),
+         decoration: BoxDecoration(color: AppColors.bgSecondary, borderRadius: BorderRadius.circular(12)),
+         child: Center(child: Text(event.isCompleted ? 'EVENT ENDED' : 'REGISTRATION CLOSED', style: AppTextStyles.titleSmall.copyWith(color: AppColors.textDisabled))),
+       );
     }
 
     if (_registeredEventIds.contains(event.id)) {
       return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.success.withValues(alpha: 0.15),
-                  AppColors.success.withValues(alpha: 0.08),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              border: Border.all(
-                color: AppColors.success.withValues(alpha: 0.4),
-                width: 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.success.withValues(alpha: 0.2),
-                  blurRadius: 15,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle,
-                    color: AppColors.success,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  'You are registered!',
-                  style: AppTextStyles.titleMedium.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.verified_rounded, color: AppColors.success, size: 20),
+              const SizedBox(width: 8),
+              Text('CONGRATS! YOU\'RE IN', style: AppTextStyles.titleSmall.copyWith(color: AppColors.success, fontWeight: FontWeight.bold)),
+            ],
           ),
           if (event.isTeam) ...[
-            const SizedBox(height: AppSpacing.md),
-             AppButton(
+            const SizedBox(height: 12),
+            AppButton(
               text: 'MANAGE TEAM',
-              icon: Icons.settings,
+              icon: Icons.settings_suggest_rounded,
               backgroundColor: AppColors.secondary,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => TeamManagementPage(eventId: event.id),
-                  ),
-                ).then((_) => _loadData());
-              },
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => TeamManagementPage(eventId: event.id))).then((_) => _loadData()),
             ),
           ],
         ],
@@ -598,102 +388,36 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     }
 
     if (event.isTeam) {
-      // Check if user has a pending join request for this event
-      final hasPendingRequest = state.myJoinRequests.any((teamData) {
-        final evt = teamData['event'];
-        final eventId = evt is Map ? (evt['_id']?.toString() ?? '') : '';
-        final requests = teamData['joinRequests'] as List<dynamic>? ?? [];
-        return eventId == event.id && requests.any((r) => r['status'] == 'PENDING');
-      });
-
-      if (hasPendingRequest) {
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.hourglass_top, color: Colors.orange, size: 24),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Join Request Pending',
-                          style: AppTextStyles.titleMedium.copyWith(
-                            color: Colors.orange,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Waiting for team leader to accept your request.',
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                ],
-              ),
-
-               AppTextButton(
-            text: 'Check My Invitations',
-            icon: Icons.mail,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const MyInvitationsPage(),
-                ),
-              );
-            },
-          )
-            ],
-          ),
-        );
-      }
-
-      return Column(
+       return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           GradientButton(
-            text: 'CREATE TEAM & REGISTER',
-            icon: Icons.group_add,
+            text: 'CREATE TEAM',
+            icon: Icons.add_moderator_rounded,
             isLoading: state.isOperationLoading,
-            onPressed: () {
-              _showTeamCreationDialog(context, event.id);
-            },
+            onPressed: () => _showTeamCreationDialog(context, event.id),
           ),
-          const SizedBox(height: AppSpacing.md),
-          AppTextButton(
-            text: 'Or Browse Existing Teams',
-            icon: Icons.groups,
-            onPressed: () => _showPublicTeamsSheet(context, event),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppTextButton(
-            text: 'Check My Invitations',
-            icon: Icons.mail,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const MyInvitationsPage(),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showPublicTeamsSheet(context, event),
+                  icon: const Icon(Icons.search, size: 18),
+                  label: const Text('FIND TEAM'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
                 ),
-              );
-            },
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const MyInvitationsPage())),
+                  icon: const Icon(Icons.mail_outline, size: 18),
+                  label: const Text('INVITES'),
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white24), padding: const EdgeInsets.symmetric(vertical: 12)),
+                ),
+              ),
+            ],
           )
         ],
       );
@@ -701,75 +425,127 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
 
     return GradientButton(
       text: 'REGISTER NOW',
-      icon: Icons.how_to_reg,
+      icon: Icons.bolt_rounded,
       isLoading: state.isOperationLoading,
-      onPressed: () {
-        context.read<EventsCubit>().registerForEvent(event.id);
-      },
+      onPressed: () => context.read<EventsCubit>().registerForEvent(event.id),
+    );
+  }
+
+  Widget _buildContactsList(EventEntity event) {
+    return Column(
+      children: event.contacts!.map((contact) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: CircleAvatar(backgroundColor: AppColors.primary.withOpacity(0.2), child: const Icon(Icons.person, color: AppColors.primary)),
+          title: Text(contact.name, style: AppTextStyles.titleMedium),
+          subtitle: Text(contact.post ?? 'Coordinator', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
+          trailing: IconButton(
+            icon: const Icon(Icons.call_rounded, color: AppColors.success, size: 20),
+            onPressed: () => _launchUrl('tel:${contact.number}'),
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildExternalLinks(EventEntity event) {
+    bool hasRulebook = event.rulebookPdf?.isNotEmpty ?? false;
+    bool hasWhatsapp = event.whatsappGroupLink?.isNotEmpty ?? false;
+
+    if (!hasRulebook && !hasWhatsapp) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Resources'),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          children: [
+            if (hasRulebook) Expanded(child: _buildLinkButton(text: 'RULEBOOK', icon: Icons.picture_as_pdf_rounded, color: AppColors.primary, onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PDFViewerPage(url: event.rulebookPdf!, title: 'Rulebook'),
+                ),
+              );
+            })),
+            if (hasRulebook && hasWhatsapp) const SizedBox(width: 12),
+            if (hasWhatsapp) Expanded(child: _buildLinkButton(text: 'WHATSAPP', icon: Icons.wechat_rounded, color: const Color(0xFF25D366), onPressed: () => _launchUrl(event.whatsappGroupLink!))),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xl),
+      ],
+    );
+  }
+
+  Widget _buildLinkButton({required String text, required IconData icon, required Color color, required VoidCallback onPressed}) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.4)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(text, style: AppTextStyles.labelLarge.copyWith(color: color, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Row(
       children: [
-        Container(
-          width: 5,
-          height: 28,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.primary,
-                AppColors.primary.withValues(alpha: 0.6),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(3),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Text(
-          title,
-          style: AppTextStyles.titleLarge.copyWith(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
+        Container(width: 4, height: 20, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2))),
+        const SizedBox(width: 10),
+        Text(title, style: AppTextStyles.titleLarge.copyWith(fontWeight: FontWeight.w800, fontSize: 18)),
       ],
     );
   }
 
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w600)),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // Reuse your existing dialog/sheet methods...
   void _showTeamCreationDialog(BuildContext context, String eventId) {
     final eventsCubit = context.read<EventsCubit>();
-    final teamNameController = TextEditingController();
     _isDialogVisible = true;
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => BlocProvider.value(
+      builder: (dCtx) => BlocProvider.value(
         value: eventsCubit,
         child: TeamCreationDialogContent(
           eventId: eventId,
-          teamNameController: teamNameController,
+          teamNameController: TextEditingController(),
           eventsCubit: eventsCubit,
-          onClose: () {
-            Navigator.pop(dialogContext);
-            _isDialogVisible = false;
-          },
+          onClose: () { Navigator.pop(dCtx); _isDialogVisible = false; },
         ),
       ),
-    ).then((_) {
-      // Ensure flag is reset if dialog is dismissed by back button
-      _isDialogVisible = false;
-    });
+    );
   }
 
   void _showPublicTeamsSheet(BuildContext context, EventEntity event) {
@@ -784,19 +560,10 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
     );
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        margin: const EdgeInsets.all(AppSpacing.md),
-        duration: const Duration(milliseconds: 1500),
-      ),
-    );
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showSnackBar('Could not open link', AppColors.error);
+    }
   }
 }

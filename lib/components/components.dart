@@ -3,6 +3,7 @@ library;
 
 // Buttons
 export 'buttons/app_button.dart';
+export 'buttons/google_button.dart';
 
 // Inputs
 export 'inputs/app_text_field.dart';

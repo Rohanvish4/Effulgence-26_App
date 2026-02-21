@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../auth/domain/entity/user_entity.dart';
@@ -141,10 +142,10 @@ class IdCardWidget extends StatelessWidget {
             child: CircleAvatar(
               radius: 35,
               backgroundColor: AppColors.surface,
-              backgroundImage: user.imageUrl != null
+              backgroundImage: UrlUtils.isValidUrl(user.imageUrl)
                   ? CachedNetworkImageProvider(user.imageUrl!)
                   : null,
-              child: user.imageUrl == null
+              child: !UrlUtils.isValidUrl(user.imageUrl)
                   ? const Icon(Icons.person, color: Colors.white)
                   : null,
             ),

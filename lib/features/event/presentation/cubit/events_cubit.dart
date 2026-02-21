@@ -564,7 +564,7 @@ class EventsCubit extends Cubit<EventsState> {
   }
 
   Future<void> getTeamInvitations(String eventId, String teamId) async {
-    // Silent load or specific loading state? Using operation loading for now to keep it simple
+    // Silent load or specific loading state, Using operation loading for now to keep it simple
     // or better, just update the list silenty if it's a refresh.
     // For now, let's not block UI with full loading screen, but update state.
     

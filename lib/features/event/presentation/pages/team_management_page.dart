@@ -104,7 +104,7 @@ class _TeamManagementPageState extends State<TeamManagementPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-// ... (I need to match strict context, so I'll do partial replacements)
+    
                   // Team Header
                   _buildTeamHeader(context, team, isLeader),
                   const SizedBox(height: AppSpacing.xl),
@@ -266,7 +266,6 @@ class _TeamManagementPageState extends State<TeamManagementPage> {
     final requests = context.watch<EventsCubit>().state.teamJoinRequests;
     
     if (requests.isEmpty) {
-        // Trigger load if empty? Might be loop. better call in loadData
         return const SizedBox.shrink(); 
     }
 

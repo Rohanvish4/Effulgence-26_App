@@ -64,6 +64,17 @@ abstract class AuthRemoteDataSource {
     int? mobile,
     String? collegeName,
   });
+
+  Future<AuthResponseModel> googleLogin({
+    required String idToken,
+  });
+
+  Future<AuthResponseModel> googleRegister({
+    required String idToken,
+    required String mobile,
+    required String collegeName,
+    required String password,
+  });
 }
 
 /// Auth remote data source implementation
@@ -240,5 +251,43 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     );
 
     return UserModel.fromJson(response.data['user'] ?? response.data);
+  }
+
+  @override
+  Future<AuthResponseModel> googleLogin({
+    required String idToken,
+  }) async {
+    try {
+      final response = await apiClient.post(
+        '/user/auth/google-login',
+        data: {'idToken': idToken},
+      );
+      return AuthResponseModel.fromJson(response.data);
+    } on ServerException catch (e) {
+      if (e.statusCode == 404) {
+        // User not found, .. registration
+        rethrow;
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<AuthResponseModel> googleRegister({
+    required String idToken,
+    required String mobile,
+    required String collegeName,
+    required String password,
+  }) async {
+    final response = await apiClient.post(
+      '/user/auth/google-register',
+      data: {
+        'idToken': idToken,
+        'mobile': mobile,
+        'collegeName': collegeName,
+        'password': password,
+      },
+    );
+    return AuthResponseModel.fromJson(response.data);
   }
 }

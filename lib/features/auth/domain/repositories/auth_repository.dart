@@ -17,6 +17,17 @@ abstract class AuthRepository {
     String? imageUrl,
   });
 
+  Future<Either<Failure, AuthResponseEntity>> googleLogin({
+    required String idToken,
+  });
+
+  Future<Either<Failure, AuthResponseEntity>> googleRegister({
+    required String idToken,
+    required String mobile,
+    required String collegeName,
+    required String password,
+  });
+
   Future<Either<Failure, AuthResponseEntity>> verifyOtp({
     required String email,
     required String otp,

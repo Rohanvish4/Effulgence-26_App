@@ -348,4 +348,60 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(UnknownFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, AuthResponseEntity>> googleLogin({
+    required String idToken,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+    try {
+      final response = await remoteDataSource.googleLogin(idToken: idToken);
+      // Save user data
+      if (response.user != null) {
+        await localDataSource.saveUser(response.user as UserModel);
+      }
+      return Right(response);
+    } on NotFoundException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: 404));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AuthResponseEntity>> googleRegister({
+    required String idToken,
+    required String mobile,
+    required String collegeName,
+    required String password,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+    try {
+      final response = await remoteDataSource.googleRegister(
+        idToken: idToken,
+        mobile: mobile,
+        collegeName: collegeName,
+        password: password,
+      );
+      // Save user data
+      if (response.user != null) {
+        await localDataSource.saveUser(response.user as UserModel);
+      }
+      return Right(response);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message, statusCode: e.statusCode));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(message: e.message));
+    } catch (e) {
+      return Left(UnknownFailure(message: e.toString()));
+    }
+  }
 }

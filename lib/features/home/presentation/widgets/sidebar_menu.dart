@@ -115,7 +115,7 @@ class SidebarMenu extends StatelessWidget {
                 //   icon: Icons.people_outline_rounded,
                 //   title: 'Our Team',
                 //   onTap: () {
-                //     // context.push('/team');
+                //     context.push('/team');
                 //     onClose();
                 //   },
                 // ),
@@ -226,7 +226,7 @@ class _SocialIcon extends StatelessWidget {
       borderRadius: BorderRadius.circular(50),
       child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Icon(icon, color: Colors.white70, size: 20),
+        child: Icon(icon,  size: 20),
       ),
     );
   }

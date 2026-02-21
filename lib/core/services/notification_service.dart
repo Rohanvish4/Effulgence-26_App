@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:effulgence26_mobile_app/router.dart';
@@ -7,40 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
 import '../constants/app_constants.dart';
 import '../network/api_client.dart';
-
-/// Top-level background message handler
-Future<void> _firebaseBackgroundMessageHandler(RemoteMessage message) async {
-  print('Handling a background message: ${message.messageId}');
-  print('Background message data: ${message.data}');
-  // Initialize local notifications for showing notification in background
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-  
-  // Android setup if not already done
-  if (Platform.isAndroid) {
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(
-          const AndroidNotificationChannel(
-            'effulgence_alerts',
-            'Effulgence System Alerts',
-            description: 'Critical event and system updates',
-            importance: Importance.max,
-            playSound: true,
-            enableVibration: true,
-            ledColor: Color(0xFF2DD4BF),
-          ),
-        );
-  }
-
-  // You can also show a local notification here if needed
-  if (message.notification != null) {
-    print('Background message has notification, showing local notification');
-  }
-}
  
 class NotificationService {
   final ApiClient apiClient;
@@ -48,9 +19,35 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  final List<_PendingNavigation> _pendingNavigations = <_PendingNavigation>[];
+  bool _flushScheduled = false;
+  bool _tapHandlersConfigured = false;
+  bool _localNotificationsInitialized = false;
+
+  AuthCubit? _authCubit;
+  StreamSubscription<AuthState>? _authSubscription;
+
   NotificationService({required this.apiClient});
 
+  void bindAuthCubit(AuthCubit authCubit) {
+    if (_authCubit == authCubit) return;
+    _authCubit = authCubit;
+
+    _authSubscription?.cancel();
+    _authSubscription = authCubit.stream.listen((_) {
+      _flushPendingNavigations();
+    });
+
+    // In case we already queued a navigation before auth/router were ready.
+    _flushPendingNavigations();
+  }
+
   Future<void> initialize() async {
+    // Always set up tap handling early.
+    // Permission gating should only affect token sync and foreground display.
+    _configureFcmTapHandlers();
+    await _initializeLocalNotifications();
+
     // 1. Request Permission
     NotificationSettings settings = await _firebaseMessaging.requestPermission(
       alert: true,
@@ -85,44 +82,18 @@ class NotificationService {
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
       print('User granted permission');
 
-      // 2. Initialize Local Notifications
-      const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-
-      final DarwinInitializationSettings initializationSettingsIOS =
-          DarwinInitializationSettings(
-            requestAlertPermission: true,
-            requestBadgePermission: true,
-            requestSoundPermission: true,
-          );
-
-      final InitializationSettings initializationSettings =
-          InitializationSettings(
-            android: initializationSettingsAndroid,
-            iOS: initializationSettingsIOS,
-          );
-
-      await _flutterLocalNotificationsPlugin.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse details) {
-          print('Notification tapped: ${details.payload}');
-          // Handle notification tap if needed
-          _handleNotificationTap(details.payload);
-        },
-      );
-
       // 3. Subscribe to Broadcast Topic
       await _firebaseMessaging.subscribeToTopic('all_users');
 
       // 4. Get Token and Send to Backend
       _firebaseMessaging.getToken().then((token) {
         if (token != null) {
-          _sendTokenToBackend(token);
+          syncFcmToken(token);
         }
       });
 
       // 5. Listen for Token Refreshes
-      _firebaseMessaging.onTokenRefresh.listen(_sendTokenToBackend);
+      _firebaseMessaging.onTokenRefresh.listen(syncFcmToken);
 
       // 6. Handle Foreground Messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -133,39 +104,102 @@ class NotificationService {
           _showLocalNotification(message);
         }
       });
-
-      // 7. Handle Background Message Taps (from terminated/background state)
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        print('Message opened app: ${message.data}');
-        _handleBackgroundMessageTap(message);
-      });
-
-      // 8. Handle Background Messages (app in background)
-      // Note: This must be a top-level or static function for background handler
-      FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundMessageHandler);
     } else {
       print('User declined or has not accepted permission');
     }
   }
 
-  Future<void> _sendTokenToBackend(String token) async {
-    print("New FCM Token: $token");
+  Future<void> _initializeLocalNotifications() async {
+    if (_localNotificationsInitialized) return;
+    _localNotificationsInitialized = true;
+
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@drawable/ic_notification');
+
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        print('Local notification tapped: ${details.payload}');
+        _handleNotificationTap(details.payload);
+      },
+    );
+
+    // If the app was launched by tapping a local notification (terminated state)
+    // the tap callback above may not fire; this covers that case.
+    final NotificationAppLaunchDetails? launchDetails =
+        await _flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+    final String? payload = launchDetails?.notificationResponse?.payload;
+    if (payload != null && payload.isNotEmpty) {
+      print('App launched via local notification. Payload: $payload');
+      _handleNotificationTap(payload);
+    }
+  }
+
+  void _configureFcmTapHandlers() {
+    if (_tapHandlersConfigured) return;
+    _tapHandlersConfigured = true;
+
+    // When app is in background and user taps the notification
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleBackgroundMessageTap);
+
+    // When app is terminated and launched by tapping the notification
+    // This must be called AFTER Firebase.initializeApp(), which is done in main().
+    _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message == null) return;
+      print('App launched via FCM notification. Data: ${message.data}');
+      _handleBackgroundMessageTap(message);
+    }).catchError((e) {
+      print('Error reading initial FCM message: $e');
+    });
+  }
+
+  Future<void> syncFcmToken([String? token]) async {
     try {
+      final String? fcmToken = token ?? await _firebaseMessaging.getToken();
+      if (fcmToken == null) return;
+
+      print("Syncing FCM Token: $fcmToken");
+      
       final prefs = await SharedPreferences.getInstance();
       final String? cachedToken = prefs.getString(AppConstants.cachedFcmTokenKey);
 
-      if (cachedToken != token) {
+      if (cachedToken != fcmToken) {
         // Token has changed or is new, send to backend
         print("FCM Token changed. Updating backend...");
-        await apiClient.updateFcmToken(token);
+        await apiClient.updateFcmToken(fcmToken);
         // Update cache only after successful backend update
-        await prefs.setString(AppConstants.cachedFcmTokenKey, token);
+        await prefs.setString(AppConstants.cachedFcmTokenKey, fcmToken);
         print("FCM Token synced and cached.");
       } else {
         print("FCM Token is unchanged. Skipping backend update.");
       }
     } catch (e) {
-      print("Error updating FCM token: $e");
+      print("Error syncing FCM token: $e");
+    }
+  }
+
+  Future<void> clearFcmToken() async {
+    try {
+      print("Clearing FCM Token...");
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(AppConstants.cachedFcmTokenKey);
+    
+      print("FCM Token cache cleared.");
+    } catch (e) {
+      print("Error clearing FCM token: $e");
     }
   }
 
@@ -178,66 +212,127 @@ class NotificationService {
       final String id = data['id']?.toString() ?? '';
 
       print('Handling notification tap: type=$type, id=$id');
-
-      if (type == 'EVENT' && id.isNotEmpty) {
-        // Use the global navigator key to push the event details page
-        final context = AppRouter.rootNavigatorKey.currentContext;
-        if (context != null) {
-          // We can use GoRouter/Navigator directly since we are inside the app context
-           // Using a slight delay to ensure the app is ready if launched from terminated state
-           Future.delayed(const Duration(milliseconds: 200), () {
-             if (context.mounted) { // Check mounted for safety though root context usually is
-                GoRouter.of(context).pushNamed('eventDetails', pathParameters: {'id': id});
-             }
-           });
-        } else {
-             print('Navigator context is null, cannot navigate');
-        }
-      }
-
-      if(type == 'ADMIN'){
-        final context = AppRouter.rootNavigatorKey.currentContext;
-        if (context != null) {
-          // We can use GoRouter/Navigator directly since we are inside the app context
-           // Using a slight delay to ensure the app is ready if launched from terminated state
-           Future.delayed(const Duration(milliseconds: 200), () {
-             if (context.mounted) { // Check mounted for safety though root context usually is
-                GoRouter.of(context).pushNamed('notifications');
-             }
-           });
-        } else {
-             print('Navigator context is null, cannot navigate');
-        }
-      }
+      _requestNavigation(type: type, id: id);
     } catch (e) {
       print('Error parsing notification payload: $e');
-      // Fallback
     }
   }
 
   void _handleBackgroundMessageTap(RemoteMessage message) {
-    // Handle background/terminated state message tap
     print('Handling background message tap: ${message.data}');
+    
+    final String type = message.data['type']?.toString().toUpperCase() ?? '';
+    // Check both relatedId and id
+    final String id = message.data['relatedId']?.toString() ?? message.data['id']?.toString() ?? '';
+
+    _requestNavigation(type: type, id: id);
   }
 
-  // Future<void> _showLocalNotification(RemoteMessage message) async {
-  //   const AndroidNotificationDetails androidPlatformChannelSpecifics =
-  //       AndroidNotificationDetails(
-  //     'high_importance_channel', // id
-  //     'High Importance Notifications', // title
-  //     importance: Importance.max,
-  //     priority: Priority.high,
-  //   );
-  //   const NotificationDetails platformChannelSpecifics =
-  //       NotificationDetails(android: androidPlatformChannelSpecifics);
+  void _requestNavigation({required String type, required String id}) {
+    if (type.isEmpty) {
+      print('Notification type is empty; cannot navigate');
+      return;
+    }
 
-  //   await _flutterLocalNotificationsPlugin.show(
-  //     message.hashCode,
-  //     message.notification?.title,
-  //     message.notification?.body,
-  //     platformChannelSpecifics,
-  //   );
-  // }
+    _pendingNavigations.add(_PendingNavigation(type: type, id: id));
+    _flushPendingNavigations();
+  }
+
+  void _flushPendingNavigations() {
+    final context = AppRouter.rootNavigatorKey.currentContext;
+
+    // Router isn't mounted yet
+    if (context == null) {
+      _scheduleFlush();
+      return;
+    }
+
+    if (!context.mounted) {
+      _scheduleFlush();
+      return;
+    }
+
+    if (_pendingNavigations.isEmpty) return;
+
+    // If auth is still loading or user isn't authenticated yet, wait.
+    // This avoids GoRouter redirect sending us to /splash or /login and
+    // effectively dropping the notification deep link.
+    final authState = _authCubit?.state;
+    final isLoading = authState is AuthLoading || authState is AuthInitial;
+    final isAuthenticated = authState is AuthAuthenticated;
+    final isRegistrationSuccess = authState is AuthRegistrationSuccess;
+    final canNavigateToProtectedRoutes =
+      !isLoading && (isAuthenticated || isRegistrationSuccess);
+
+    if (!canNavigateToProtectedRoutes) {
+      _scheduleFlush();
+      return;
+    }
+
+    final pending = List<_PendingNavigation>.from(_pendingNavigations);
+    _pendingNavigations.clear();
+
+    // Execute after the current frame to avoid navigating during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) {
+        _pendingNavigations.addAll(pending);
+        _scheduleFlush();
+        return;
+      }
+
+      final router = GoRouter.of(context);
+      for (final nav in pending) {
+        _navigate(router: router, type: nav.type, id: nav.id);
+      }
+    });
+  }
+
+  void _scheduleFlush() {
+    if (_flushScheduled) return;
+    _flushScheduled = true;
+
+    // Retry for a short window until the router context becomes available.
+    Future<void>(() async {
+      for (int i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(milliseconds: 150));
+        final context = AppRouter.rootNavigatorKey.currentContext;
+        if (context != null && context.mounted) {
+          break;
+        }
+      }
+    }).whenComplete(() {
+      _flushScheduled = false;
+      _flushPendingNavigations();
+    });
+  }
+
+  void _navigate({required GoRouter router, required String type, required String id}) {
+    switch (type) {
+      case 'EVENT':
+        if (id.isNotEmpty) {
+          router.pushNamed('eventDetails', pathParameters: {'id': id});
+        } else {
+          print('EVENT notification missing id; cannot navigate');
+        }
+        break;
+      case 'ADMIN':
+        router.pushNamed('notifications');
+        break;
+      case 'TEAM_INVITE':
+        router.pushNamed('myInvitations');
+        break;
+      case 'TEAM_REQUEST':
+      case 'TEAM_UPDATE':
+        if (id.isNotEmpty) {
+          router.pushNamed('teamManagement', pathParameters: {'eventId': id});
+        } else {
+          print('$type notification missing eventId; cannot navigate');
+        }
+        break;
+      default:
+        print('Unknown notification type: $type');
+    }
+  }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
     try {
@@ -266,7 +361,7 @@ class NotificationService {
               htmlFormatContentTitle: true,
               htmlFormatSummaryText: true,
             ),
-            icon: '@mipmap/ic_launcher',
+            icon: '@drawable/ic_notification',
             largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
             enableVibration: true,
             playSound: true,
@@ -292,7 +387,7 @@ class NotificationService {
         notificationDetails,
         payload: jsonEncode({
           'type': type,
-          'id': message.data['relatedId'] ?? '',
+          'id': message.data['relatedId'] ?? message.data['id'] ?? '',
         }),
       );
     } catch (e) {
@@ -310,8 +405,19 @@ class NotificationService {
         return const Color(0xFFFFB74D); // Orange
       case 'SYSTEM':
         return const Color(0xFF2DD4BF); // Teal
+      case 'TEAM_INVITE':
+      case 'TEAM_REQUEST':
+      case 'TEAM_UPDATE':
+        return const Color(0xFFF39C12); // Amber/Orange for Team activity
       default:
         return const Color(0xFF2DD4BF); // Primary Teal
     }
   }
+}
+
+class _PendingNavigation {
+  final String type;
+  final String id;
+
+  const _PendingNavigation({required this.type, required this.id});
 }
