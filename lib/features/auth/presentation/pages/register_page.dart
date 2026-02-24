@@ -463,6 +463,18 @@ class _RegisterPageState extends State<RegisterPage>
               ),
             ),
             const SizedBox(height: AppSpacing.md),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Text(
+                'Note: KNIT students must use their college mail ID (@knit.ac.in).\nStudents from other colleges can use any email.',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.warning,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ],
       ),

@@ -18,6 +18,9 @@ import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart
 import 'package:effulgence26_mobile_app/core/services/analytics_service.dart';
 import '../../../../../components/components.dart';
 
+import 'package:badges/badges.dart' as badges;
+import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_cubit.dart';
+import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_state.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/countdown_timer_widget.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/faq_widget.dart';
 
@@ -186,13 +189,36 @@ class _HomePageState extends State<HomePage>
   // App Bar
   Widget _buildAppBar() {
     return SliverAppBar(
-      actions: [IconButton(
-        icon: const Icon(Icons.notifications_rounded, color: AppColors.primary),
-        onPressed: () {
-          HapticFeedback.vibrate();
-          context.push('/notifications');
-        },
-      ),],
+      actions: [
+        BlocBuilder<NotificationCubit, NotificationState>(
+          builder: (context, state) {
+            int unreadCount = 0;
+            if (state is NotificationLoaded) {
+              final remoteConfig = context.read<RemoteConfigService>();
+              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
+              final validNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate));
+              unreadCount = validNotifications.where((n) => !n.isRead).length;
+            }
+
+            return IconButton(
+              icon: badges.Badge(
+                showBadge: unreadCount > 0,
+                badgeContent: Text(
+                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+                child: const Icon(Icons.notifications_rounded, color: AppColors.primary),
+              ),
+              onPressed: () {
+                HapticFeedback.vibrate();
+                context.push('/notifications');
+              },
+            );
+          },
+        ),
+        SizedBox(width: 10,)
+      ],
       expandedHeight: 220,
       pinned: true,
       leading: IconButton(

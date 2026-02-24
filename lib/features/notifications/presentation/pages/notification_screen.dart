@@ -12,6 +12,7 @@ import '../cubit/notification_cubit.dart';
 import '../cubit/notification_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'package:go_router/go_router.dart';
+import 'package:badges/badges.dart' as badges;
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -39,13 +40,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(context),
         ),  
-        title: Text(
-          'NOTIFICATIONS',
-          style: AppTextStyles.labelSmall.copyWith(
-            color: AppColors.primary,
-            letterSpacing: 4,
-            fontWeight: FontWeight.bold,
-          ),
+        title: BlocBuilder<NotificationCubit, NotificationState>(
+          builder: (context, state) {
+            int unreadCount = 0;
+            if (state is NotificationLoaded) {
+              final remoteConfig = context.read<RemoteConfigService>();
+              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
+              final validNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate));
+              unreadCount = validNotifications.where((n) => !n.isRead).length;
+            }
+
+            return badges.Badge(
+              showBadge: unreadCount > 0,
+              badgeContent: Text(
+                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              position: badges.BadgePosition.topEnd(top: -12, end: -15),
+              child: Text(
+                'NOTIFICATIONS',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.primary,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
         ),
         centerTitle: true,
         backgroundColor: AppColors.bgPrimary.withValues(alpha:0.8),
