@@ -33,6 +33,7 @@ class _RegisterPageState extends State<RegisterPage>
   final _collegeNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _referralCodeController = TextEditingController();
   // State
   bool _isCollegeLocked = false;
   late AnimationController _glowController;
@@ -90,6 +91,7 @@ class _RegisterPageState extends State<RegisterPage>
     _collegeNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
 
     // _otpController removed
     // _resendTimer removed
@@ -127,6 +129,9 @@ class _RegisterPageState extends State<RegisterPage>
           mobile: _mobileController.text.trim(),
           collegeName: _collegeNameController.text.trim(),
           password: _passwordController.text,
+          referralRegId: (!_isCollegeLocked && _referralCodeController.text.trim().isNotEmpty)
+              ? _referralCodeController.text.trim()
+              : null,
         );
       } else {
         // Manual registration removed
@@ -442,6 +447,19 @@ class _RegisterPageState extends State<RegisterPage>
                 color: AppColors.textSecondary,
               ),
             ),
+
+            // Referral Code field (optional, only for non-KNIT users)
+            if (!_isCollegeLocked) ...[  
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Referral Code (Optional)',
+                hint: 'Enter a friend\'s registration ID',
+                controller: _referralCodeController,
+                keyboardType: TextInputType.text,
+                prefixIcon: Icons.card_giftcard_outlined,
+                enabled: !isLoading,
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.lg),
 

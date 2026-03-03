@@ -96,7 +96,7 @@ class _HomePageState extends State<HomePage>
 
     return Scaffold(
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [

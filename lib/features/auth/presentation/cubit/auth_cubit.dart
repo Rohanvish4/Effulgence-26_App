@@ -414,6 +414,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   }) async {
     emit(const AuthLoading());
     final result = await authRepositoryImpl.googleRegister(
@@ -421,6 +422,7 @@ class AuthCubit extends Cubit<AuthState> {
       mobile: mobile,
       collegeName: collegeName,
       password: password,
+      referralRegId: referralRegId,
     );
 
     result.fold(

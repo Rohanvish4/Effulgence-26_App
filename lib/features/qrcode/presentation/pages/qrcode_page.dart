@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,7 +37,7 @@ class _QrCodePageState extends State<QrCodePage> {
       ),
       extendBodyBehindAppBar: true,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: BlocBuilder<QrCodeCubit, QrCodeState>(
           builder: (context, state) {
             if (state is QrCodeLoading) {

@@ -26,6 +26,7 @@ abstract class AuthRepository {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   });
 
   Future<Either<Failure, AuthResponseEntity>> verifyOtp({

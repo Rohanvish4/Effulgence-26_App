@@ -1,42 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import '../../core/theme/app_colors.dart';
+import '../../core/services/remote_config_service.dart';
 
 class FloatingBackgroundElement {
-  /// Number of instances of this element to spawn.
   final int count;
-
-  /// Provide either [assetPath] or [builder].
   final String? assetPath;
   final Widget Function(BuildContext context)? builder;
-
   final BoxFit fit;
-
-  /// Size range in logical pixels.
   final double minSize;
   final double maxSize;
-
-  /// Opacity range.
   final double minOpacity;
   final double maxOpacity;
-
-  /// Drift amplitude in logical pixels.
   final double driftX;
   final double driftY;
-
-  /// Relative speed multipliers for drift/rotation.
   final double minSpeed;
   final double maxSpeed;
   final double minRotationSpeed;
   final double maxRotationSpeed;
-
-  /// Optional blur (nice for “ghosted” logos/mascots).
   final bool blur;
   final double blurSigma;
-
-  /// Whether to enable rotation animation. Set to false to keep element
-  /// in its original orientation (useful for oriented graphics like mascots).
   final bool rotationEnabled;
 
   const FloatingBackgroundElement({
@@ -91,32 +76,16 @@ class _SpawnedFloatingElement {
 
 class ParticleBackground extends StatefulWidget {
   final Widget? child;
-
-  /// Optional floating decorations that drift behind content.
-  ///
-  /// Example:
-  /// ParticleBackground(
-  ///   floatingElements: [
-  ///     FloatingBackgroundElement(
-  ///       assetPath: 'assets/bg/effulgence_logo.png',
-  ///       count: 3,
-  ///       minOpacity: 0.03,
-  ///       maxOpacity: 0.08,
-  ///       blur: true,
-  ///     ),
-  ///   ],
-  /// )
   final List<FloatingBackgroundElement> floatingElements;
-
-  /// Set a seed if you want deterministic placement (useful for tests).
-  /// If null, each widget instance uses a stable random seed.
   final int? seed;
+  final int? day;
 
   const ParticleBackground({
     super.key,
     this.child,
     this.floatingElements = const [],
     this.seed,
+    this.day,
   });
 
   @override
@@ -129,9 +98,9 @@ class _ParticleBackgroundState extends State<ParticleBackground>
   late int _seed;
   late math.Random _random;
   late List<_SpawnedFloatingElement> _spawnedElements;
-  late List<_FieldParticle> _dotParticles;
-  late List<_FieldLine> _lineParticles;
+  late ParticleSystem _activeSystem;
   late ParticleFieldPainter _particlePainter;
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -141,49 +110,62 @@ class _ParticleBackgroundState extends State<ParticleBackground>
     _spawnedElements = _spawnElements(widget.floatingElements);
 
     _particleController = AnimationController(
+      // Ensure the animations run infinitely
       duration: const Duration(seconds: 20),
       vsync: this,
     )..repeat();
-
-    _initParticles();
-
-    // Create a single painter instance and let it repaint via the controller.
-    _particlePainter = ParticleFieldPainter(
-      animation: _particleController,
-      dots: _dotParticles,
-      lines: _lineParticles,
-    );
   }
 
-  void _initParticles() {
-    final particleRandom = math.Random(42);
-    _dotParticles = List.generate(50, (_) => _FieldParticle(
-      x: particleRandom.nextDouble(),
-      y: particleRandom.nextDouble(),
-      speed: 0.2 + particleRandom.nextDouble() * 0.3,
-      size: 1.0 + particleRandom.nextDouble() * 2,
-      color: Color.lerp(
-        AppColors.electricBlue,
-        AppColors.royalPurple,
-        particleRandom.nextDouble(),
-      )!.withValues(alpha: 0.3),
-    ));
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initSystem();
+      _initialized = true;
+    }
+  }
 
-    _lineParticles = List.generate(20, (_) {
-      return _FieldLine(
-        startX: particleRandom.nextDouble(),
-        startY: particleRandom.nextDouble(),
-        dx: particleRandom.nextDouble() * 100 - 50,
-        dy: particleRandom.nextDouble() * 100 - 50,
-      );
-    });
+  void _initSystem() {
+    int day = widget.day ?? 1;
+    if (widget.day == null) {
+      try {
+        day = context.read<RemoteConfigService>().techfestDay;
+      } catch (e) {
+        day = 1;
+      }
+    }
+
+    switch (day) {
+      case 2:
+        _activeSystem = MatrixSystem();
+        break;
+      case 3:
+        _activeSystem = CircuitSystem();
+        break;
+      case 4:
+        _activeSystem = DataStreamSystem();
+        break;
+      case 5:
+      case 1:
+      default:
+        _activeSystem = DefaultParticleSystem();
+        break;
+    }
+    _activeSystem.init(_seed);
+    _particlePainter = ParticleFieldPainter(
+      animation: _particleController,
+      system: _activeSystem,
+    );
   }
 
   @override
   void didUpdateWidget(covariant ParticleBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // If the element list changes, respawn.
+    if (oldWidget.day != widget.day) {
+      _initSystem();
+    }
+
     if (oldWidget.floatingElements != widget.floatingElements ||
         oldWidget.seed != widget.seed) {
       _seed = widget.seed ?? (widget.key?.hashCode ?? identityHashCode(this));
@@ -200,13 +182,12 @@ class _ParticleBackgroundState extends State<ParticleBackground>
 
   @override
   Widget build(BuildContext context) {
+    if (!_initialized) return const SizedBox();
+
     return SafeArea(
       child: Stack(
         children: [
-          // Background Color
           Container(color: AppColors.bgPrimary),
-      
-          // Animated particle background
           Positioned.fill(
             child: RepaintBoundary(
               child: CustomPaint(
@@ -214,8 +195,6 @@ class _ParticleBackgroundState extends State<ParticleBackground>
               ),
             ),
           ),
-      
-          // Floating themed elements (images/widgets)
           if (_spawnedElements.isNotEmpty)
             Positioned.fill(
               child: IgnorePointer(
@@ -227,42 +206,26 @@ class _ParticleBackgroundState extends State<ParticleBackground>
                       builder: (context, constraints) {
                         final w = constraints.maxWidth;
                         final h = constraints.maxHeight;
-      
+
                         return Stack(
                           children: _spawnedElements.map((e) {
-                            final dx =
-                                math.sin(t * e.speed + e.phaseX) * e.spec.driftX;
-                            final dy =
-                                math.cos(t * e.speed + e.phaseY) * e.spec.driftY;
+                            final dx = math.sin(t * e.speed + e.phaseX) * e.spec.driftX;
+                            final dy = math.cos(t * e.speed + e.phaseY) * e.spec.driftY;
                             final r = t * e.rotationSpeed + e.phaseR;
-      
-                            // Position is normalized so it works for any screen size.
-                            final left = (e.xNorm * w - e.size / 2 + dx).clamp(
-                              -e.size,
-                              w,
-                            );
-                            final top = (e.yNorm * h - e.size / 2 + dy).clamp(
-                              -e.size,
-                              h,
-                            );
-      
-                            Widget elementChild =
-                                e.spec.builder?.call(context) ??
+
+                            final left = (e.xNorm * w - e.size / 2 + dx).clamp(-e.size, w);
+                            final top = (e.yNorm * h - e.size / 2 + dy).clamp(-e.size, h);
+
+                            Widget elementChild = e.spec.builder?.call(context) ??
                                 Image.asset(
                                   e.spec.assetPath!,
                                   width: e.size,
                                   height: e.size,
                                   fit: e.spec.fit,
                                   filterQuality: FilterQuality.low,
-                                  // Keep these light; they are background-only.
-                                  cacheWidth:
-                                      (e.size *
-                                              MediaQuery.of(
-                                                context,
-                                              ).devicePixelRatio)
-                                          .round(),
+                                  cacheWidth: (e.size * MediaQuery.of(context).devicePixelRatio).round(),
                                 );
-      
+
                             if (e.spec.blur) {
                               elementChild = ImageFiltered(
                                 imageFilter: ui.ImageFilter.blur(
@@ -272,15 +235,14 @@ class _ParticleBackgroundState extends State<ParticleBackground>
                                 child: elementChild,
                               );
                             }
-      
-                            // Apply rotation only if enabled for this element.
+
                             if (e.spec.rotationEnabled) {
                               elementChild = Transform.rotate(
                                 angle: r,
                                 child: elementChild,
                               );
                             }
-      
+
                             return Positioned(
                               left: left.toDouble(),
                               top: top.toDouble(),
@@ -297,17 +259,13 @@ class _ParticleBackgroundState extends State<ParticleBackground>
                 ),
               ),
             ),
-      
-          // Content
           if (widget.child != null) Positioned.fill(child: widget.child!),
         ],
       ),
     );
   }
 
-  List<_SpawnedFloatingElement> _spawnElements(
-    List<FloatingBackgroundElement> specs,
-  ) {
+  List<_SpawnedFloatingElement> _spawnElements(List<FloatingBackgroundElement> specs) {
     final spawned = <_SpawnedFloatingElement>[];
     for (final spec in specs) {
       final count = spec.count.clamp(0, 1000);
@@ -318,17 +276,9 @@ class _ParticleBackgroundState extends State<ParticleBackground>
             xNorm: _random.nextDouble(),
             yNorm: _random.nextDouble(),
             size: _lerp(spec.minSize, spec.maxSize, _random.nextDouble()),
-            opacity: _lerp(
-              spec.minOpacity,
-              spec.maxOpacity,
-              _random.nextDouble(),
-            ),
+            opacity: _lerp(spec.minOpacity, spec.maxOpacity, _random.nextDouble()),
             speed: _lerp(spec.minSpeed, spec.maxSpeed, _random.nextDouble()),
-            rotationSpeed: _lerp(
-              spec.minRotationSpeed,
-              spec.maxRotationSpeed,
-              _random.nextDouble(),
-            ),
+            rotationSpeed: _lerp(spec.minRotationSpeed, spec.maxRotationSpeed, _random.nextDouble()),
             phaseX: _random.nextDouble() * 2 * math.pi,
             phaseY: _random.nextDouble() * 2 * math.pi,
             phaseR: _random.nextDouble() * 2 * math.pi,
@@ -344,42 +294,89 @@ class _ParticleBackgroundState extends State<ParticleBackground>
 
 class ParticleFieldPainter extends CustomPainter {
   final Animation<double> animation;
-  final List<_FieldParticle> dots;
-  final List<_FieldLine> lines;
+  final ParticleSystem system;
 
-  // Pre-create Paint objects to avoid allocation in paint loop
+  ParticleFieldPainter({
+    required this.animation,
+    required this.system,
+  }) : super(repaint: animation);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    system.paint(canvas, size, animation.value);
+  }
+
+  @override
+  bool shouldRepaint(covariant ParticleFieldPainter oldDelegate) {
+    return oldDelegate.system != system;
+  }
+}
+
+abstract class ParticleSystem {
+  void init(int seed);
+  void paint(Canvas canvas, Size size, double t);
+}
+
+// ---------------------------------------------------------
+// Default / Day 1 Particle System (Dots & Static Lines)
+// ---------------------------------------------------------
+class _FieldParticle {
+  final double x, y, speed, size;
+  final Color color;
+  _FieldParticle({required this.x, required this.y, required this.speed, required this.size, required this.color});
+}
+
+class _FieldLine {
+  final double startX, startY, dx, dy;
+  _FieldLine({required this.startX, required this.startY, required this.dx, required this.dy});
+}
+
+class DefaultParticleSystem implements ParticleSystem {
+  late List<_FieldParticle> _dotParticles;
+  late List<_FieldLine> _lineParticles;
   final Paint _dotPaint = Paint()..style = PaintingStyle.fill;
   final Paint _linePaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.5
     ..color = AppColors.electricBlue.withValues(alpha: 0.1);
 
-  ParticleFieldPainter({
-    required this.animation,
-    required this.dots,
-    required this.lines,
-  }) : super(repaint: animation);
+  @override
+  void init(int seed) {
+    final rng = math.Random(seed);
+    _dotParticles = List.generate(50, (_) => _FieldParticle(
+      x: rng.nextDouble(),
+      y: rng.nextDouble(),
+      speed: 0.2 + rng.nextDouble() * 0.3,
+      size: 1.0 + rng.nextDouble() * 2,
+      color: Color.lerp(
+        AppColors.electricBlue,
+        AppColors.royalPurple,
+        rng.nextDouble(),
+      )!.withValues(alpha: 0.3),
+    ));
+
+    _lineParticles = List.generate(20, (_) {
+      return _FieldLine(
+        startX: rng.nextDouble(),
+        startY: rng.nextDouble(),
+        dx: rng.nextDouble() * 100 - 50,
+        dy: rng.nextDouble() * 100 - 50,
+      );
+    });
+  }
 
   @override
-  void paint(Canvas canvas, Size size) {
-    // Draw particles
-    for (final dot in dots) {
+  void paint(Canvas canvas, Size size, double t) {
+    for (final dot in _dotParticles) {
       final x = dot.x * size.width;
-      final offset = (animation.value * dot.speed) % 1.0;
+      final offset = (t * dot.speed) % 1.0;
       final y = ((dot.y + offset) % 1.0) * size.height;
 
-      // Reuse the paint object, only updating color
       _dotPaint.color = dot.color;
-
-      canvas.drawCircle(
-        Offset(x, y),
-        dot.size,
-        _dotPaint,
-      );
+      canvas.drawCircle(Offset(x, y), dot.size, _dotPaint);
     }
 
-    // Draw connecting lines with the constant paint
-    for (final line in lines) {
+    for (final line in _lineParticles) {
       final startX = line.startX * size.width;
       final startY = line.startY * size.height;
       final endX = startX + line.dx;
@@ -388,41 +385,149 @@ class ParticleFieldPainter extends CustomPainter {
       canvas.drawLine(Offset(startX, startY), Offset(endX, endY), _linePaint);
     }
   }
+}
+
+// ---------------------------------------------------------
+// Matrix Rain / Day 2 System
+// ---------------------------------------------------------
+class _MatrixDrop {
+  final double x, speed, length, thickness;
+  final Color color;
+  _MatrixDrop({required this.x, required this.speed, required this.length, required this.thickness, required this.color});
+}
+
+class MatrixSystem implements ParticleSystem {
+  late List<_MatrixDrop> _drops;
+  final Paint _paint = Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
 
   @override
-  bool shouldRepaint(covariant ParticleFieldPainter oldDelegate) {
-    // Repaint is already driven by `repaint: animation`.
-    // Only return true if the particle definitions change.
-    return oldDelegate.dots != dots || oldDelegate.lines != lines;
+  void init(int seed) {
+    final rng = math.Random(seed);
+    _drops = List.generate(40, (_) => _MatrixDrop(
+      x: rng.nextDouble(),
+      speed: 0.2 + rng.nextDouble() * 0.4,
+      length: 0.1 + rng.nextDouble() * 0.25,
+      thickness: 1.0 + rng.nextDouble() * 1.5,
+      color: Colors.greenAccent.withValues(alpha: 0.1 + rng.nextDouble() * 0.3),
+    ));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size, double t) {
+    for (final drop in _drops) {
+      final xPx = drop.x * size.width;
+      final yOffset = (t * drop.speed) % 1.0;
+      final headPx = yOffset * size.height;
+      final lenPx = drop.length * size.height;
+
+      _paint.color = drop.color;
+      _paint.strokeWidth = drop.thickness;
+      
+      canvas.drawLine(Offset(xPx, headPx), Offset(xPx, headPx - lenPx), _paint);
+      
+      if (headPx - lenPx < 0) {
+        canvas.drawLine(Offset(xPx, headPx + size.height), Offset(xPx, headPx + size.height - lenPx), _paint);
+      }
+    }
   }
 }
 
-class _FieldParticle {
-  final double x;
-  final double y;
-  final double speed;
-  final double size;
-  final Color color;
-
-  _FieldParticle({
-    required this.x,
-    required this.y,
-    required this.speed,
-    required this.size,
-    required this.color,
-  });
+// ---------------------------------------------------------
+// Tech Circuit / Day 3 System
+// ---------------------------------------------------------
+class _CircuitNode {
+  final double x, y, speedX, speedY, size;
+  _CircuitNode(this.x, this.y, this.speedX, this.speedY, this.size);
 }
 
-class _FieldLine {
-  final double startX;
-  final double startY;
-  final double dx;
-  final double dy;
+class CircuitSystem implements ParticleSystem {
+  late List<_CircuitNode> _nodes;
+  final Paint _nodePaint = Paint()..color = AppColors.primary.withValues(alpha: 0.5)..style = PaintingStyle.fill;
+  final Paint _linePaint = Paint()..color = AppColors.primary.withValues(alpha: 0.3)..style = PaintingStyle.stroke..strokeWidth = 1.0;
 
-  _FieldLine({
-    required this.startX,
-    required this.startY,
-    required this.dx,
-    required this.dy,
-  });
+  @override
+  void init(int seed) {
+    final rng = math.Random(seed);
+    _nodes = List.generate(35, (_) => _CircuitNode(
+       rng.nextDouble(), rng.nextDouble(),
+       (rng.nextDouble() - 0.5) * 0.15,
+       (rng.nextDouble() - 0.5) * 0.15,
+       1.5 + rng.nextDouble() * 2,
+    ));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size, double t) {
+    final w = size.width;
+    final h = size.height;
+    
+    List<Offset> positions = [];
+    for (var node in _nodes) {
+      double px = ((node.x + node.speedX * t) % 1.0) * w;
+      double py = ((node.y + node.speedY * t) % 1.0) * h;
+      if (px < 0) px += w;
+      if (py < 0) py += h;
+      
+      positions.add(Offset(px, py));
+      canvas.drawCircle(Offset(px, py), node.size, _nodePaint);
+    }
+    
+    final maxDist = w * 0.22;
+    for (int i = 0; i < positions.length; i++) {
+        for (int j = i + 1; j < positions.length; j++) {
+            final p1 = positions[i];
+            final p2 = positions[j];
+            final dist = (p1 - p2).distance;
+            if (dist < maxDist) {
+               _linePaint.color = AppColors.primary.withValues(alpha: 0.3 * (1 - dist / maxDist));
+               canvas.drawLine(p1, p2, _linePaint);
+            }
+        }
+    }
+  }
+}
+
+// ---------------------------------------------------------
+// Data Stream / Day 4 System
+// ---------------------------------------------------------
+class _DataStreamLine {
+  final double y, speed, length, thickness;
+  final Color color;
+  _DataStreamLine(this.y, this.speed, this.length, this.thickness, this.color);
+}
+
+class DataStreamSystem implements ParticleSystem {
+  late List<_DataStreamLine> _streams;
+  final Paint _paint = Paint()..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+
+  @override
+  void init(int seed) {
+    final rng = math.Random(seed);
+    _streams = List.generate(45, (_) => _DataStreamLine(
+       rng.nextDouble(),
+       0.5 + rng.nextDouble() * 1.5,
+       0.05 + rng.nextDouble() * 0.2,
+       0.5 + rng.nextDouble() * 2.0,
+       Color.lerp(Colors.orangeAccent, Colors.pinkAccent, rng.nextDouble())!.withValues(alpha: 0.1 + rng.nextDouble() * 0.3),
+    ));
+  }
+
+  @override
+  void paint(Canvas canvas, Size size, double t) {
+    for (var s in _streams) {
+       final yPx = s.y * size.height;
+       final headOffset = (t * s.speed) % 1.0;
+       final headPx = headOffset * size.width;
+       final lenPx = s.length * size.width;
+       
+       _paint.color = s.color;
+       _paint.strokeWidth = s.thickness;
+       
+       canvas.drawLine(Offset(headPx, yPx), Offset(headPx - lenPx, yPx), _paint);
+       
+       if (headPx - lenPx < 0) {
+          canvas.drawLine(Offset(headPx + size.width, yPx), Offset(headPx + size.width - lenPx, yPx), _paint);
+       }
+    }
+  }
 }

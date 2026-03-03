@@ -4,6 +4,7 @@ import 'package:effulgence26_mobile_app/features/profile/data/models/edit_respon
 
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../models/referral_model.dart';
 import '../models/user_profile_model.dart';
 
 abstract class ProfileRemoteDataSource {
@@ -24,6 +25,8 @@ abstract class ProfileRemoteDataSource {
     required String utrNumber,
     required String paymentReceiptUrl,
   });
+
+  Future<List<ReferralModel>> getMyReferrals();
 }
 
 class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
@@ -102,8 +105,16 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       data: {
         'utrNumber': utrNumber,
         'paymentReceiptUrl': paymentReceiptUrl,
-        // 'amount': 200, // Optional/Fixed as per frontend reference
       },
     );
+  }
+
+  @override
+  Future<List<ReferralModel>> getMyReferrals() async {
+    final response = await apiClient.get(ApiConstants.myReferrals);
+    final data = response.data['referrals'] as List? ?? [];
+    return data
+        .map((e) => ReferralModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

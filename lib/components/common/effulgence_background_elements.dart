@@ -297,4 +297,21 @@ class EffulgenceBackgroundElements {
       rotationEnabled: false,
     ),
   ];
+
+  static List<FloatingBackgroundElement> getElementsForDay(int day) {
+    switch (day) {
+      case 1:
+        return dense;
+      case 2:
+        return dense;
+      case 3:
+        return dense;
+      case 4:
+        return energetic;
+      case 5:
+        return staticElementsBg;
+      default:
+        return dense;
+    }
+  }
 }

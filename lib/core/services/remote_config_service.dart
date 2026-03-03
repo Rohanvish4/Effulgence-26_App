@@ -15,6 +15,7 @@ class RemoteConfigService {
   static const String _keyEnableSponsors = 'enable_sponsors';
   static const String _keyEnableRegistrations = 'enable_registrations';
   static const String _keyNotificationExpiryTime = 'notification_expiry_time';
+  static const String _keyTechfestDay = 'techfest_day';
 
   Future<void> initialize() async {
     try {
@@ -35,6 +36,7 @@ class RemoteConfigService {
         _keyEnableSponsors: true,
         _keyEnableRegistrations: true,
         _keyNotificationExpiryTime: 24,
+        _keyTechfestDay: 1,
       });
 
       await _remoteConfig.fetchAndActivate();
@@ -60,6 +62,8 @@ class RemoteConfigService {
   bool get areRegistrationsEnabled => _remoteConfig.getBool(_keyEnableRegistrations);
 
   int get notificationExpiryTime => _remoteConfig.getInt(_keyNotificationExpiryTime); // in hours 
+
+  int get techfestDay => _remoteConfig.getInt(_keyTechfestDay);
 
   // --- Update Logic ---
 

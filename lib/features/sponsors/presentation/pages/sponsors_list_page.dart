@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -34,7 +35,7 @@ class _SponsorsListPageState extends State<SponsorsListPage> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: RefreshIndicator(
           onRefresh: () async => context.read<SponsorsCubit>().loadSponsors(),
           color: AppColors.primary,
