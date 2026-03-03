@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/repositories/qrcode_repository.dart';
 import 'qr_verification_state.dart';
+import '../../../../core/services/analytics_service.dart';
 
 class QrVerificationCubit extends Cubit<QrVerificationState> {
   final QrCodeRepository repository;
@@ -16,8 +17,14 @@ class QrVerificationCubit extends Cubit<QrVerificationState> {
     emit(QrVerificationLoading());
     final result = await repository.verifyQrCode(qrData);
     result.fold(
-      (failure) => emit(QrVerificationFailure(message: failure.message)),
-      (response) => emit(QrVerificationSuccess(result: response)),
+      (failure) {
+        AnalyticsService.instance.logQrScanned(success: false).catchError((_) {});
+        emit(QrVerificationFailure(message: failure.message));
+      },
+      (response) {
+        AnalyticsService.instance.logQrScanned(success: true).catchError((_) {});
+        emit(QrVerificationSuccess(result: response));
+      },
     );
   }
 

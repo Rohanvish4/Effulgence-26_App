@@ -21,7 +21,7 @@ class Debouncer {
 
   /// Execute a function with debounce delay
   /// If called again before the delay completes, the previous call is cancelled
-  run(Function() action) {
+  void run(Function() action) {
     _timer?.cancel();
     _timer = Timer(Duration(milliseconds: milliseconds), action);
   }

@@ -58,7 +58,7 @@ class NotificationService {
       criticalAlert: false,
     );
 
-    print('User notification permission status: ${settings.authorizationStatus}');
+    debugPrint('User notification permission status: ${settings.authorizationStatus}');
 
     // Create notification channels for Android
     if (Platform.isAndroid) {
@@ -80,7 +80,7 @@ class NotificationService {
     }
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
+      debugPrint('User granted permission');
 
       // 3. Subscribe to Broadcast Topic
       await _firebaseMessaging.subscribeToTopic('all_users');
@@ -97,15 +97,15 @@ class NotificationService {
 
       // 6. Handle Foreground Messages
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        print('Got a message whilst in the foreground!');
-        print('Message data: ${message.data}');
-        print('Message notification: ${message.notification}');
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
+        debugPrint('Message notification: ${message.notification}');
         if (message.notification != null) {
           _showLocalNotification(message);
         }
       });
     } else {
-      print('User declined or has not accepted permission');
+      debugPrint('User declined or has not accepted permission');
     }
   }
 
@@ -131,7 +131,7 @@ class NotificationService {
     await _flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
-        print('Local notification tapped: ${details.payload}');
+        debugPrint('Local notification tapped: ${details.payload}');
         _handleNotificationTap(details.payload);
       },
     );
@@ -142,7 +142,7 @@ class NotificationService {
         await _flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
     final String? payload = launchDetails?.notificationResponse?.payload;
     if (payload != null && payload.isNotEmpty) {
-      print('App launched via local notification. Payload: $payload');
+      debugPrint('App launched via local notification. Payload: $payload');
       _handleNotificationTap(payload);
     }
   }
@@ -158,10 +158,10 @@ class NotificationService {
     // This must be called AFTER Firebase.initializeApp(), which is done in main().
     _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
       if (message == null) return;
-      print('App launched via FCM notification. Data: ${message.data}');
+      debugPrint('App launched via FCM notification. Data: ${message.data}');
       _handleBackgroundMessageTap(message);
     }).catchError((e) {
-      print('Error reading initial FCM message: $e');
+      debugPrint('Error reading initial FCM message: $e');
     });
   }
 
@@ -170,36 +170,36 @@ class NotificationService {
       final String? fcmToken = token ?? await _firebaseMessaging.getToken();
       if (fcmToken == null) return;
 
-      print("Syncing FCM Token: $fcmToken");
+      debugPrint("Syncing FCM Token: $fcmToken");
       
       final prefs = await SharedPreferences.getInstance();
       final String? cachedToken = prefs.getString(AppConstants.cachedFcmTokenKey);
 
       if (cachedToken != fcmToken) {
         // Token has changed or is new, send to backend
-        print("FCM Token changed. Updating backend...");
+        debugPrint("FCM Token changed. Updating backend...");
         await apiClient.updateFcmToken(fcmToken);
         // Update cache only after successful backend update
         await prefs.setString(AppConstants.cachedFcmTokenKey, fcmToken);
-        print("FCM Token synced and cached.");
+        debugPrint("FCM Token synced and cached.");
       } else {
-        print("FCM Token is unchanged. Skipping backend update.");
+        debugPrint("FCM Token is unchanged. Skipping backend update.");
       }
     } catch (e) {
-      print("Error syncing FCM token: $e");
+      debugPrint("Error syncing FCM token: $e");
     }
   }
 
   Future<void> clearFcmToken() async {
     try {
-      print("Clearing FCM Token...");
+      debugPrint("Clearing FCM Token...");
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(AppConstants.cachedFcmTokenKey);
     
-      print("FCM Token cache cleared.");
+      debugPrint("FCM Token cache cleared.");
     } catch (e) {
-      print("Error clearing FCM token: $e");
+      debugPrint("Error clearing FCM token: $e");
     }
   }
 
@@ -211,15 +211,15 @@ class NotificationService {
       final String type = data['type']?.toString().toUpperCase() ?? '';
       final String id = data['id']?.toString() ?? '';
 
-      print('Handling notification tap: type=$type, id=$id');
+      debugPrint('Handling notification tap: type=$type, id=$id');
       _requestNavigation(type: type, id: id);
     } catch (e) {
-      print('Error parsing notification payload: $e');
+      debugPrint('Error parsing notification payload: $e');
     }
   }
 
   void _handleBackgroundMessageTap(RemoteMessage message) {
-    print('Handling background message tap: ${message.data}');
+    debugPrint('Handling background message tap: ${message.data}');
     
     final String type = message.data['type']?.toString().toUpperCase() ?? '';
     // Check both relatedId and id
@@ -230,7 +230,7 @@ class NotificationService {
 
   void _requestNavigation({required String type, required String id}) {
     if (type.isEmpty) {
-      print('Notification type is empty; cannot navigate');
+      debugPrint('Notification type is empty; cannot navigate');
       return;
     }
 
@@ -312,7 +312,7 @@ class NotificationService {
         if (id.isNotEmpty) {
           router.pushNamed('eventDetails', pathParameters: {'id': id});
         } else {
-          print('EVENT notification missing id; cannot navigate');
+          debugPrint('EVENT notification missing id; cannot navigate');
         }
         break;
       case 'ADMIN':
@@ -326,11 +326,11 @@ class NotificationService {
         if (id.isNotEmpty) {
           router.pushNamed('teamManagement', pathParameters: {'eventId': id});
         } else {
-          print('$type notification missing eventId; cannot navigate');
+          debugPrint('$type notification missing eventId; cannot navigate');
         }
         break;
       default:
-        print('Unknown notification type: $type');
+        debugPrint('Unknown notification type: $type');
     }
   }
 
@@ -342,7 +342,7 @@ class NotificationService {
       final String title = message.notification?.title ?? 'Notification';
       final String body = message.notification?.body ?? '';
 
-      print('Showing local notification: $title - $body (type: $type)');
+      debugPrint('Showing local notification: $title - $body (type: $type)');
 
       final AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
@@ -391,7 +391,7 @@ class NotificationService {
         }),
       );
     } catch (e) {
-      print('Error showing local notification: $e');
+      debugPrint('Error showing local notification: $e');
     }
   }
 
@@ -412,6 +412,14 @@ class NotificationService {
       default:
         return const Color(0xFF2DD4BF); // Primary Teal
     }
+  }
+
+  /// Dispose resources to prevent memory leaks
+  void dispose() {
+    _authSubscription?.cancel();
+    _authSubscription = null;
+    _authCubit = null;
+    _pendingNavigations.clear();
   }
 }
 

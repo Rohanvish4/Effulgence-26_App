@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_all_users_page.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
@@ -353,7 +354,7 @@ class GoRouterRefreshStream extends ChangeNotifier {
     });
   }
 
-  late final dynamic _subscription;
+  late final StreamSubscription _subscription;
 
   @override
   void dispose() {

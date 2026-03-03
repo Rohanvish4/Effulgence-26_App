@@ -11,8 +11,8 @@ class NetworkInfoImpl implements NetworkInfo {
   Future<bool> get isConnected async {
     try {
       final result = await InternetAddress.lookup(
-        '8.8.8.8',
-      ).timeout(const Duration(seconds: 3), onTimeout: () => []);
+        'google.com',
+      ).timeout(const Duration(seconds: 5), onTimeout: () => []);
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } on SocketException catch (_) {
       return false;

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../constants/app_env.dart';
 
@@ -22,7 +23,7 @@ class RemoteConfigService {
       await _remoteConfig.setConfigSettings(
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
-          minimumFetchInterval: const Duration(minutes: 1), // Low interval for testing
+          minimumFetchInterval: Duration(minutes: kDebugMode ? 1 : 720), // 1 min for debug, 12 hours for production
         ),
       );
 
@@ -40,12 +41,12 @@ class RemoteConfigService {
       });
 
       await _remoteConfig.fetchAndActivate();
-      print('Remote Config fetched and activated');
-      print('Banner Visible: ${_remoteConfig.getBool(_keyHomeBannerVisible)}');
-      print('Banner Text: ${_remoteConfig.getString(_keyHomeBannerText)}');
+      debugPrint('Remote Config fetched and activated');
+      debugPrint('Banner Visible: ${_remoteConfig.getBool(_keyHomeBannerVisible)}');
+      debugPrint('Banner Text: ${_remoteConfig.getString(_keyHomeBannerText)}');
     } catch (e) {
       // Allow app to continue if remote config fails (fail open)
-      print('Remote Config init failed: $e');
+      debugPrint('Remote Config init failed: $e');
     }
   }
 
@@ -104,7 +105,7 @@ class RemoteConfigService {
         }
       }
     } catch (e) {
-      print('Error parsing version: $e');
+      debugPrint('Error parsing version: $e');
     }
     return false;
   }

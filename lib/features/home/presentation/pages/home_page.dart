@@ -128,8 +128,7 @@ class _HomePageState extends State<HomePage>
     try {
       final remoteConfig = context.read<RemoteConfigService>();
       if (!remoteConfig.isHomeBannerVisible) return const SliverToBoxAdapter(child: SizedBox.shrink());
-      print("remoteConfig.homeBannerText ");
-      print(remoteConfig.homeBannerText);
+      debugPrint('remoteConfig.homeBannerText: ${remoteConfig.homeBannerText}');
 
       return SliverToBoxAdapter(
         child: Padding(

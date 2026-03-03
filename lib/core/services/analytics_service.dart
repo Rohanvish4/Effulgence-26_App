@@ -57,17 +57,30 @@ class AnalyticsService {
     await _fa.logSignUp(signUpMethod: method);
   }
 
-  Future<void> setUserId(String? userId) async {
-    if (kDebugMode) return;
-    await _fa.setUserId(id: userId);
-  }
-
-  Future<void> setUserProperty({
-    required String name,
-    required String? value,
+  Future<void> identifyUser({
+    required String? userId,
+    required String? email,
+    required String? name,
+    required String? college,
   }) async {
     if (kDebugMode) return;
-    await _fa.setUserProperty(name: name, value: value);
+    await _fa.setUserId(id: userId);
+    await _fa.setUserProperty(name: 'email', value: email);
+    await _fa.setUserProperty(name: 'name', value: name);
+    await _fa.setUserProperty(name: 'college', value: college);
+
+    // This ensures these parameters are attached to *every* event natively
+    await _fa.setDefaultEventParameters({
+      if (email != null) 'user_email': email,
+      if (name != null) 'user_name': name,
+      if (college != null) 'user_college': college,
+    });
+  }
+
+  Future<void> clearUser() async {
+    if (kDebugMode) return;
+    await _fa.setUserId(id: null);
+    await _fa.setDefaultEventParameters(null);
   }
 
   // ---------------------------------------------------------------------------

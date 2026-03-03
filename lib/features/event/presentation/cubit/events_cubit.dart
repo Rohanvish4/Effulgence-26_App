@@ -2,6 +2,7 @@ import 'package:effulgence26_mobile_app/features/event/domain/entities/event_par
 import 'package:effulgence26_mobile_app/features/event/domain/repositories/events_repository.dart';
 import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/services/analytics_service.dart';
 import 'events_state.dart';
 
 /// Events Cubit for managing events state
@@ -60,8 +61,10 @@ class EventsCubit extends Cubit<EventsState> {
       (failure) => emit(
         state.copyWith(isDetailsLoading: false, errorMessage: failure.message),
       ),
-      (event) =>
-          emit(state.copyWith(isDetailsLoading: false, selectedEvent: event)),
+      (event) {
+          AnalyticsService.instance.logEventViewed(event.id, event.title).catchError((_) {});
+          emit(state.copyWith(isDetailsLoading: false, selectedEvent: event));
+      },
     );
   }
 
@@ -84,12 +87,16 @@ class EventsCubit extends Cubit<EventsState> {
           errorMessage: failure.message,
         ),
       ),
-      (_) => emit(
-        state.copyWith(
-          isOperationLoading: false,
-          successMessage: 'Successfully registered for the event!',
-        ),
-      ),
+      (_) {
+        final eventName = state.selectedEvent?.title ?? 'Unknown Event';
+        AnalyticsService.instance.logEventRegistered(eventId, eventName).catchError((_) {});
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Successfully registered for the event!',
+          ),
+        );
+      },
     );
   }
 
@@ -122,13 +129,16 @@ class EventsCubit extends Cubit<EventsState> {
           errorMessage: failure.message,
         ),
       ),
-      (_) => emit(
-        state.copyWith(
-          isOperationLoading: false,
-          successMessage:
-              'Team created successfully! You can now invite members.',
-        ),
-      ),
+      (_) {
+        AnalyticsService.instance.logTeamCreated(eventId).catchError((_) {});
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage:
+                'Team created successfully! You can now invite members.',
+          ),
+        );
+      },
     );
   }
 
@@ -206,12 +216,15 @@ class EventsCubit extends Cubit<EventsState> {
           errorMessage: failure.message,
         ),
       ),
-      (_) => emit(
-        state.copyWith(
-          isOperationLoading: false,
-          successMessage: 'Successfully joined the team!',
-        ),
-      ),
+      (_) {
+        AnalyticsService.instance.logTeamJoined(eventId, teamId).catchError((_) {});
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Successfully joined the team!',
+          ),
+        );
+      },
     );
   }
 
@@ -293,7 +306,7 @@ class EventsCubit extends Cubit<EventsState> {
         state.copyWith(
           isOperationLoading: false,
           successMessage: 'Event updated',
-          events: [...state.events, event],
+          events: state.events.map((e) => e.id == event.id ? event : e).toList(),
         ),
       ),
     );
@@ -509,6 +522,9 @@ class EventsCubit extends Cubit<EventsState> {
     result.fold(
       (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
       (_) {
+        if (action == 'ACCEPTED') {
+          AnalyticsService.instance.logTeamJoined(eventId, teamId).catchError((_) {});
+        }
         emit(state.copyWith(
           isOperationLoading: false, 
           successMessage: action == 'ACCEPTED' ? 'Joined team!' : 'Invitation declined'
@@ -608,5 +624,11 @@ class EventsCubit extends Cubit<EventsState> {
   /// Clean up resources (call in UI dispose method)
   void cleanup() {
     _searchDebouncer.dispose();
+  }
+
+  @override
+  Future<void> close() {
+    _searchDebouncer.dispose();
+    return super.close();
   }
 }
