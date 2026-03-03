@@ -16,6 +16,7 @@ class ParticipationModel extends ParticipationEntity {
     required super.score,
     required super.isQualified,
     super.remarks,
+    super.isPublic,
   });
 
   /// Create from JSON
@@ -26,7 +27,7 @@ class ParticipationModel extends ParticipationEntity {
           ? (json['event']['_id'] ?? '')
           : (json['event'] ?? ''),
       user: _parseUser(json['user']),
-        teamMembers: _parseTeamMembers(json['teamMember']),
+      teamMembers: _parseTeamMembers(json['teamMember']),
       teamName: json['teamName'],
       participationType: json['participationType'] ?? 'INDIVIDUAL',
       registeredAt: json['registeredAt'] != null
@@ -40,6 +41,7 @@ class ParticipationModel extends ParticipationEntity {
       score: json['score'] ?? 0,
       isQualified: json['isQualified'] ?? false,
       remarks: json['remarks'],
+      isPublic: json['isPublic'] ?? false,
     );
   }
 
@@ -102,6 +104,7 @@ class ParticipationModel extends ParticipationEntity {
       'score': score,
       'isQualified': isQualified,
       'remarks': remarks,
+      'isPublic': isPublic,
     };
   }
 }

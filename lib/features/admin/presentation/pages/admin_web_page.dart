@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import '../../../../core/constants/app_env.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 
@@ -51,7 +52,7 @@ class _AdminWebPageState extends State<AdminWebPage> {
     await _syncCookies();
 
     // 3. Load Page
-    _controller.loadRequest(Uri.parse('https://www.effulgence26.in/profile'));
+    _controller.loadRequest(Uri.parse('${AppEnv.websiteBaseUrl}/profile'));
 
     if (mounted) {
       setState(() {
@@ -68,7 +69,7 @@ class _AdminWebPageState extends State<AdminWebPage> {
       // Get cookies for the domain
       // Note: We use the API domain or the root domain depending on where the cookie is set
       // Try both to be safe
-      final uri = Uri.parse('https://api.effulgence26.in');
+      final uri = Uri.parse(AppEnv.apiBaseUrl);
       final cookies = await cookieJar.loadForRequest(uri);
 
       if (cookies.isNotEmpty) {
@@ -78,7 +79,7 @@ class _AdminWebPageState extends State<AdminWebPage> {
               name: cookie.name,
               value: cookie.value,
               // Set domain to the main domain so it's accessible by the web app
-              domain: '.effulgence26.in',
+              domain: '.${Uri.parse(AppEnv.websiteBaseUrl).host}',
               path: '/',
             ),
           );

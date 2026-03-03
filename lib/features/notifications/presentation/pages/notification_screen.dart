@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/core/utils/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +12,7 @@ import '../cubit/notification_cubit.dart';
 import '../cubit/notification_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'package:go_router/go_router.dart';
+import 'package:badges/badges.dart' as badges;
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -38,13 +40,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(context),
         ),  
-        title: Text(
-          'NOTIFICATIONS',
-          style: AppTextStyles.labelSmall.copyWith(
-            color: AppColors.primary,
-            letterSpacing: 4,
-            fontWeight: FontWeight.bold,
-          ),
+        title: BlocBuilder<NotificationCubit, NotificationState>(
+          builder: (context, state) {
+            int unreadCount = 0;
+            if (state is NotificationLoaded) {
+              final remoteConfig = context.read<RemoteConfigService>();
+              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
+              final validNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate));
+              unreadCount = validNotifications.where((n) => !n.isRead).length;
+            }
+
+            return badges.Badge(
+              showBadge: unreadCount > 0,
+              badgeContent: Text(
+                unreadCount > 99 ? '99+' : unreadCount.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+              position: badges.BadgePosition.topEnd(top: -12, end: -15),
+              child: Text(
+                'NOTIFICATIONS',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.primary,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            );
+          },
         ),
         centerTitle: true,
         backgroundColor: AppColors.bgPrimary.withValues(alpha:0.8),
@@ -114,9 +137,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
               );
             } else if (state is NotificationLoaded) {
+
+               final remoteConfig = context.read<RemoteConfigService>();
+              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
+              final validNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate));
+
               final notifications = _showReadHistory
-                  ? state.notifications
-                  : state.notifications.where((n) => !n.isRead).toList();
+                  ? validNotifications.toList()
+                  : validNotifications.where((n) => !n.isRead).toList();
 
               if (notifications.isEmpty) {
                 return Center(
@@ -262,6 +291,31 @@ class _NotificationItem extends StatelessWidget {
                         } 
                         context.pushNamed('eventDetails', pathParameters: {'id': relatedId});
                         break;
+                      case 'TEAM_INVITE':
+                         if (isUnread) {
+                          context
+                              .read<NotificationCubit>()
+                              .markNotificationRead(notification.id);
+                        } 
+                        context.pushNamed('myInvitations');
+                        break;
+                      case 'TEAM_REQUEST':
+                         if (isUnread) {
+                          context
+                              .read<NotificationCubit>()
+                              .markNotificationRead(notification.id);
+                        } 
+                        context.pushNamed('teamManagement', pathParameters: {'eventId': relatedId});
+                        break;
+                      case 'TEAM_UPDATE':
+                         if (isUnread) {
+                          context
+                              .read<NotificationCubit>()
+                              .markNotificationRead(notification.id);
+                        } 
+                        // Team update can go to event details or team management
+                        context.pushNamed('eventDetails', pathParameters: {'id': relatedId});
+                        break;
                       case 'ADMIN':
                       case 'ALERT':
                       case 'REMINDER':
@@ -272,6 +326,16 @@ class _NotificationItem extends StatelessWidget {
                         // Unknown type or no specific navigation
                         break;
                     }
+                  } else {
+                     // If no relatedId but is team invite, still go to invitations
+                     if (notification.type.toUpperCase() == 'TEAM_INVITE') {
+                        if (isUnread) {
+                          context
+                              .read<NotificationCubit>()
+                              .markNotificationRead(notification.id);
+                        } 
+                        context.pushNamed('myInvitations');
+                     }
                   }
                 },
                 child: Padding(
@@ -368,6 +432,12 @@ class _NotificationItem extends StatelessWidget {
       case 'SYSTEM':
         iconData = Icons.settings_rounded;
         color = const Color(0xFF2DD4BF); // Teal
+        break;
+      case 'TEAM_INVITE':
+      case 'TEAM_REQUEST':
+      case 'TEAM_UPDATE':
+        iconData = Icons.people_outline_rounded;
+        color = const Color(0xFFF39C12); // Amber
         break;
       default:
         iconData = Icons.notifications_rounded;

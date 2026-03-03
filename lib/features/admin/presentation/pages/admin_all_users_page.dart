@@ -4,6 +4,10 @@ import 'package:effulgence26_mobile_app/features/admin/presentation/cubit/admin_
 import 'package:effulgence26_mobile_app/features/profile/presentation/widgets/id_card_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:excel/excel.dart' hide Border;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:io';
 
 class AdminAllUsersPage  extends StatefulWidget{
   const AdminAllUsersPage ({super.key});
@@ -48,6 +52,103 @@ class _AdminAllUsersPageState extends State<AdminAllUsersPage> {
     return currentScroll >= (maxScroll * 0.9);
   }
 
+  Future<void> _exportToExcel() async {
+    final state = context.read<AdminCubit>().state;
+    if (state is! AdminUsersLoaded || state.users.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No users to export')),
+      );
+      return;
+    }
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      var excel = Excel.createExcel();
+      
+      // Create sheets
+        Sheet externalSheet = excel['External'];
+      Sheet internalSheet = excel['Internal'];
+    
+      
+      // Add headers to both sheets
+      List<String> headers = [
+        'Name',
+        'Email',
+        'Mobile',
+        'Role',
+        'College',
+        'Registration ID',
+        'Effulgence ID',
+        'Status',
+        'Type'
+      ];
+        externalSheet.appendRow(headers);
+      internalSheet.appendRow(headers);
+    
+
+      // Add data
+      for (var user in state.users) {
+        List<dynamic> row = [
+          user.name,
+          user.email,
+          user.mobile.toString(),
+          user.role,
+          user.collegeName ?? 'N/A',
+          user.registrationId ?? 'N/A',
+          user.effulgenceId ?? 'N/A',
+          user.approvalStatus,
+          user.isInternalUser ? 'Internal' : 'External',
+        ];
+        
+        if (user.isInternalUser) {
+          //TODO: Currently all users are external as per backend, so all will go to external sheet. Once we have internal users, we can uncomment this and move them to internal sheet.
+           internalSheet.appendRow(row);
+        } else {
+           externalSheet.appendRow(row);
+        }
+      }
+      
+      // Attempt to rename Sheet1 if rename is available
+      try{
+         excel.rename('Sheet1', 'Unused');
+      } catch(e) {
+         // ignore
+      }
+      // Save file
+      var fileBytes = excel.save();
+      var directory = await getTemporaryDirectory();
+      
+      // Create a unique filename with timestamp
+      String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+      File file = File('${directory.path}/users_export_$timestamp.xlsx');
+      
+      await file.create(recursive: true);
+      await file.writeAsBytes(fileBytes!);
+
+      // Close loading dialog
+      if (mounted) Navigator.pop(context);
+
+      // Open file
+      await OpenFile.open(file.path);
+      
+    } catch (e) {
+      // Close loading dialog if open
+      if (mounted) Navigator.pop(context);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -60,6 +161,14 @@ class _AdminAllUsersPageState extends State<AdminAllUsersPage> {
         backgroundColor: AppColors.bgPrimary,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            onPressed: _exportToExcel,
+            icon: const Icon(Icons.download_rounded, color: AppColors.primary),
+            tooltip: 'Export to Excel',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(
         children: [

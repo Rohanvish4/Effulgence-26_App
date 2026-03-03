@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
 import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:effulgence26_mobile_app/core/services/analytics_service.dart';
 
 import '../../../../components/components.dart';
 import '../../../../core/animations/app_animations.dart';
@@ -46,6 +48,9 @@ class _EventsListPageState extends State<EventsListPage> {
   @override
   void initState() {
     super.initState();
+    // Track screen view in analytics
+    AnalyticsService.instance.logScreenView(screenName: 'EventsListPage');
+    
     // Initialize debouncer with 500ms delay
     _searchDebouncer = Debouncer(milliseconds: 500);
     _loadEvents();
@@ -259,6 +264,20 @@ class _EventsListPageState extends State<EventsListPage> {
             ),
           ),
         ),
+
+
+         Padding(
+          padding: const EdgeInsets.only(right: AppSpacing.md),
+          child: Tooltip(
+            message: 'My Invitations',
+            child: AppIconButton(
+              icon: Icons.group,
+              onPressed: () => context.push('/my-invitations'),
+            ),
+          ),
+        ),
+
+
       ],
       flexibleSpace: FlexibleSpaceBar(
         titlePadding: const EdgeInsets.only(left: AppSpacing.lg, bottom: 16),
@@ -493,7 +512,7 @@ class _EventsListPageState extends State<EventsListPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    if (event.coverImage?.isNotEmpty ?? false)
+                    if (UrlUtils.isValidUrl(event.coverImage))
                       CachedNetworkImage(
                         imageUrl: event.coverImage!,
                         fit: BoxFit.cover,
@@ -717,6 +736,7 @@ class _EventsListPageState extends State<EventsListPage> {
   }
 
   void _showSnackBar(String message, Color color) {
+     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

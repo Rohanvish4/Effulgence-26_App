@@ -125,6 +125,7 @@ class _AdminEventRegistrationsPageState
             label: 'View',
             onPressed: () => _openExcelFile(filePath),
           ),
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {

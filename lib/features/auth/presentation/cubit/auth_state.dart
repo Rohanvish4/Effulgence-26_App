@@ -84,3 +84,17 @@ class AuthUserStatusApproved extends AuthState {
 
   const AuthUserStatusApproved({required this.message, required this.data});
 }
+
+class GoogleUserNotRegistered extends AuthState {
+  final String idToken;
+  final String email;
+  final String? name;
+  final String? photoUrl;
+
+  const GoogleUserNotRegistered({
+    required this.idToken,
+    required this.email,
+    this.name,
+    this.photoUrl,
+  });
+}

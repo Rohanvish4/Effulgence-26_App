@@ -7,8 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'dart:io' as io;
+
+import '../services/analytics_service.dart';
 
 import '../network/api_client.dart';
 import '../network/network_info.dart';
@@ -75,6 +76,26 @@ class AppProviders {
     );
 
     // =========================================================================
+    // NOTIFICATION SERVICE - Initialize early for AuthCubit dependency
+    // =========================================================================
+    final notificationService = NotificationService(apiClient: apiClient);
+    // Initialize notification service in the background to avoid blocking app startup
+    notificationService.initialize().then((_) {
+      debugPrint('Notification service initialized');
+    }).catchError((e) {
+      debugPrint('Failed to initialize Notification Service: $e');
+    });
+
+    // =========================================================================
+    // NOTIFICATION FEATURE DEPENDENCY INJECTION
+    // =========================================================================
+    final notificationRepository = NotificationRepositoryImpl(
+      apiClient: apiClient,
+      networkInfo: networkInfo,
+    );
+    final notificationCubit = NotificationCubit(repository: notificationRepository);
+
+    // =========================================================================
     // AUTH FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
@@ -94,7 +115,13 @@ class AppProviders {
     );
 
     // PRESENTATION LAYER: Cubit (state management)
-    final authCubit = AuthCubit(authRepositoryImpl: authRepository);
+    final authCubit = AuthCubit(
+      authRepositoryImpl: authRepository,
+      notificationService: notificationService,
+    );
+
+    // Allow notification deep-links to wait until auth is ready.
+    notificationService.bindAuthCubit(authCubit);
 
     // Initialize auth state on app startup
     await authCubit.checkAuthStatus();
@@ -177,36 +204,9 @@ class AppProviders {
       repository: qrCodeRepository,
     );
 
-    // =========================================================================
-    // FIREBASE CRASHLYTICS - LAZY INITIALIZATION (Non-blocking)
-    // =========================================================================
-    // Initialize Crashlytics after app is ready to improve startup time
-    try {
-      await Future.delayed(const Duration(milliseconds: 100));
-      FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-    } catch (e) {
-      print("Failed to initialize Crashlytics: $e");
-    }
+    // FlutterError.onError and PlatformDispatcher.instance.onError are
+    // already configured in main.dart before runApp() for full coverage.
 
-    // =========================================================================
-    // NOTIFICATION SERVICE
-    // =========================================================================
-    final notificationService = NotificationService(apiClient: apiClient);
-    // Initialize notification service in the background to avoid blocking app startup
-    notificationService.initialize().then((_) {
-      print("Notification service initialized");
-    }).catchError((e) {
-      print("Failed to initialize Notification Service: $e");
-    });
-
-    // =========================================================================
-    // NOTIFICATION FEATURE DEPENDENCY INJECTION
-    // =========================================================================
-    final notificationRepository = NotificationRepositoryImpl(
-      apiClient: apiClient,
-      networkInfo: networkInfo,
-    );
-    final notificationCubit = NotificationCubit(repository: notificationRepository);
 
     // =========================================================================
     // ADMIN FEATURE DEPENDENCY INJECTION
@@ -234,6 +234,7 @@ class AppProviders {
       Provider<NotificationService>.value(value: notificationService),
       Provider<NotificationRepositoryImpl>.value(value: notificationRepository),
       Provider<ApiClient>.value(value: apiClient),
+      Provider<AnalyticsService>.value(value: AnalyticsService.instance),
 
       // =========================================================================
       // CUBITS (Presentation Layer - State Management)

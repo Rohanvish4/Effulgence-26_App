@@ -1,9 +1,11 @@
+import '../constants/app_env.dart';
+
 /// API Constants for Effulgence'26 App
 class ApiConstants {
   ApiConstants._();
 
-  // Base URL - Change this based on environment
-  static const String baseUrl = 'https://api.effulgence26.in/';
+  // Base URL
+  static String get baseUrl => AppEnv.apiBaseUrl;
 
   // API Endpoints
   static const String health = '/health';

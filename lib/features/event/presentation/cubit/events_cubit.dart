@@ -400,6 +400,211 @@ class EventsCubit extends Cubit<EventsState> {
     });
   }
 
+  // ===========================================================================
+  // TEAM MANAGEMENT METHODS
+  // ===========================================================================
+
+  Future<void> getMyTeam(String eventId) async {
+    // Check if we already have the team for this event to avoid flicker? 
+    // For now, simple loading state.
+    emit(state.copyWith(isParticipationsLoading: true));
+    
+    final result = await eventsRepository.getMyTeam(eventId);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(
+        isParticipationsLoading: false, 
+        errorMessage: failure.message
+      )),
+      (team) => emit(state.copyWith(
+        isParticipationsLoading: false,
+        myTeam: team, // Can be null if not in team
+      )),
+    );
+  }
+
+  Future<void> removeTeamMember({
+    required String eventId,
+    required String teamId,
+    required String memberId,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.removeTeamMember(eventId, teamId, memberId);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(isOperationLoading: false, successMessage: 'Member removed'));
+        // Refresh team details
+        getMyTeam(eventId);
+      },
+    );
+  }
+
+  Future<void> editTeam({
+    required String eventId,
+    required String teamId,
+    required String teamName,
+    required bool isPublic,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.editTeam(eventId, teamId, teamName, isPublic);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(isOperationLoading: false, successMessage: 'Team updated'));
+        getMyTeam(eventId);
+      },
+    );
+  }
+
+  Future<void> deleteTeam({
+    required String eventId,
+    required String teamId,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.deleteTeam(eventId, teamId);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(
+          isOperationLoading: false, 
+          successMessage: 'Team deleted',
+          clearMyTeam: true, // Reset team state properly
+        ));
+        loadMyParticipations(); // Update global participations list
+      },
+    );
+  }
+
+  Future<void> inviteToTeam({
+    required String eventId,
+    required String teamId,
+    required String email,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.inviteToTeam(eventId, teamId, email);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(isOperationLoading: false, successMessage: 'Invitation sent'));
+        // Refresh invitations list for the team
+        getTeamInvitations(eventId, teamId);
+      },
+    );
+  }
+
+  Future<void> respondToInvite({
+    required String eventId,
+    required String teamId,
+    required String inviteId,
+    required String action,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.respondToInvite(eventId, teamId, inviteId, action);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(
+          isOperationLoading: false, 
+          successMessage: action == 'ACCEPTED' ? 'Joined team!' : 'Invitation declined'
+        ));
+        getMyInvitations(); // Refresh my invitations
+        if (action == 'ACCEPTED') {
+          loadMyParticipations();
+        }
+      },
+    );
+  }
+
+  Future<void> requestToJoinTeam({
+    required String eventId,
+    required String teamId,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.requestToJoinTeam(eventId, teamId);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(isOperationLoading: false, successMessage: 'Join request sent'));
+        getMyJoinRequests(); // Refresh my requests
+      },
+    );
+  }
+
+  Future<void> respondToJoinRequest({
+    required String eventId,
+    required String teamId,
+    required String requestId,
+    required String action,
+  }) async {
+    emit(state.copyWith(isOperationLoading: true));
+    final result = await eventsRepository.respondToJoinRequest(eventId, teamId, requestId, action);
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(
+          isOperationLoading: false, 
+          successMessage: action == 'ACCEPTED' ? 'Request accepted' : 'Request rejected'
+        ));
+        // Refresh requests list for the team
+        getTeamJoinRequests(eventId, teamId);
+        // Refresh team members if accepted
+         if (action == 'ACCEPTED') {
+          getMyTeam(eventId);
+        }
+      },
+    );
+  }
+
+  Future<void> getTeamInvitations(String eventId, String teamId) async {
+    // Silent load or specific loading state, Using operation loading for now to keep it simple
+    // or better, just update the list silenty if it's a refresh.
+    // For now, let's not block UI with full loading screen, but update state.
+    
+    final result = await eventsRepository.getTeamInvitations(eventId, teamId);
+    
+    result.fold(
+      (failure) => null, // Silently fail or log?
+      (invitations) => emit(state.copyWith(teamInvitations: invitations)),
+    );
+  }
+
+  Future<void> getTeamJoinRequests(String eventId, String teamId) async {
+    final result = await eventsRepository.getTeamJoinRequests(eventId, teamId);
+    
+    result.fold(
+      (failure) => null,
+      (requests) => emit(state.copyWith(teamJoinRequests: requests)),
+    );
+  }
+
+  Future<void> getMyInvitations() async {
+    emit(state.copyWith(isParticipationsLoading: true));
+    final result = await eventsRepository.getMyInvitations();
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isParticipationsLoading: false, errorMessage: failure.message)),
+      (invitations) => emit(state.copyWith(isParticipationsLoading: false, myInvitations: invitations)),
+    );
+  }
+
+  Future<void> getMyJoinRequests() async {
+    emit(state.copyWith(isParticipationsLoading: true));
+    final result = await eventsRepository.getMyJoinRequests();
+    
+    result.fold(
+      (failure) => emit(state.copyWith(isParticipationsLoading: false, errorMessage: failure.message)),
+      (requests) => emit(state.copyWith(isParticipationsLoading: false, myJoinRequests: requests)),
+    );
+  }
+
   /// Clean up resources (call in UI dispose method)
   void cleanup() {
     _searchDebouncer.dispose();

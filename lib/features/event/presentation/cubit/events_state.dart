@@ -13,6 +13,13 @@ class EventsState {
   final String? errorMessage;
   final String? successMessage;
 
+  // Team Management State
+  final ParticipationEntity? myTeam;
+  final List<dynamic> teamInvitations;
+  final List<dynamic> teamJoinRequests;
+  final List<dynamic> myInvitations;
+  final List<dynamic> myJoinRequests;
+
   // Granular loading states
   final bool isEventsLoading;
   final bool isDetailsLoading;
@@ -27,6 +34,11 @@ class EventsState {
     this.selectedEvent,
     this.errorMessage,
     this.successMessage,
+    this.myTeam,
+    this.teamInvitations = const [],
+    this.teamJoinRequests = const [],
+    this.myInvitations = const [],
+    this.myJoinRequests = const [],
     this.isEventsLoading = false,
     this.isDetailsLoading = false,
     this.isParticipationsLoading = false,
@@ -45,6 +57,12 @@ class EventsState {
     bool? isDetailsLoading,
     bool? isParticipationsLoading,
     bool? isOperationLoading,
+    ParticipationEntity? myTeam,
+    bool clearMyTeam = false,
+    List<dynamic>? teamInvitations,
+    List<dynamic>? teamJoinRequests,
+    List<dynamic>? myInvitations,
+    List<dynamic>? myJoinRequests,
   }) {
     return EventsState(
       status: status ?? this.status,
@@ -59,6 +77,11 @@ class EventsState {
       isParticipationsLoading:
           isParticipationsLoading ?? this.isParticipationsLoading,
       isOperationLoading: isOperationLoading ?? this.isOperationLoading,
+      myTeam: clearMyTeam ? null : (myTeam ?? this.myTeam),
+      teamInvitations: teamInvitations ?? this.teamInvitations,
+      teamJoinRequests: teamJoinRequests ?? this.teamJoinRequests,
+      myInvitations: myInvitations ?? this.myInvitations,
+      myJoinRequests: myJoinRequests ?? this.myJoinRequests,
     );
   }
 }

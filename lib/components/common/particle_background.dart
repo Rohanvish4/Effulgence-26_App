@@ -131,6 +131,7 @@ class _ParticleBackgroundState extends State<ParticleBackground>
   late List<_SpawnedFloatingElement> _spawnedElements;
   late List<_FieldParticle> _dotParticles;
   late List<_FieldLine> _lineParticles;
+  late ParticleFieldPainter _particlePainter;
 
   @override
   void initState() {
@@ -145,6 +146,13 @@ class _ParticleBackgroundState extends State<ParticleBackground>
     )..repeat();
 
     _initParticles();
+
+    // Create a single painter instance and let it repaint via the controller.
+    _particlePainter = ParticleFieldPainter(
+      animation: _particleController,
+      dots: _dotParticles,
+      lines: _lineParticles,
+    );
   }
 
   void _initParticles() {
@@ -200,19 +208,10 @@ class _ParticleBackgroundState extends State<ParticleBackground>
       
           // Animated particle background
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _particleController,
-              builder: (context, child) {
-                return RepaintBoundary(
-                  child: CustomPaint(
-                    painter: ParticleFieldPainter(
-                      animation: _particleController,
-                      dots: _dotParticles,
-                      lines: _lineParticles,
-                    ),
-                  ),
-                );
-              },
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _particlePainter,
+              ),
             ),
           ),
       
@@ -391,7 +390,11 @@ class ParticleFieldPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant ParticleFieldPainter oldDelegate) => true; 
+  bool shouldRepaint(covariant ParticleFieldPainter oldDelegate) {
+    // Repaint is already driven by `repaint: animation`.
+    // Only return true if the particle definitions change.
+    return oldDelegate.dots != dots || oldDelegate.lines != lines;
+  }
 }
 
 class _FieldParticle {

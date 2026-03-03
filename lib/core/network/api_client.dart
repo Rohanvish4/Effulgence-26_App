@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:flutter/foundation.dart';
 import '../constants/api_constants.dart';
 import '../errors/exceptions.dart';
+import '../services/analytics_service.dart';
 
 /// API Client wrapper for Dio
 class ApiClient {
@@ -36,10 +38,15 @@ class ApiClient {
       ),
     );
 
-    // Add logging in debug mode
-    _dio.interceptors.add(
-      LogInterceptor(requestBody: true, responseBody: true, error: true),
-    );
+    // Performance monitoring- measure every request duration and flag slow calls
+    _dio.interceptors.add(_PerformanceInterceptor());
+
+    // Add logging in debug mode only
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(requestBody: true, responseBody: true, error: true),
+      );
+    }
   }
 
   /// Request interceptor - adds auth token
@@ -272,7 +279,8 @@ class ApiClient {
         }
         return UnauthorizedException(message: message);
       case 403:
-        return ForbiddenException(message: message);
+        // Return ServerException for 403 so the message is propagated to UI
+        return ServerException(message: message, statusCode: statusCode);
       case 404:
         return NotFoundException(message: message);
       case 409:
@@ -286,6 +294,86 @@ class ApiClient {
         );
       default:
         return ServerException(message: message, statusCode: statusCode);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Performance Monitoring Interceptor
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Tracks every API request's duration.
+/// - Logs all timings in debug mode.
+/// - Reports slow calls (>= [_slowThresholdMs]) to [AnalyticsService].
+class _PerformanceInterceptor extends Interceptor {
+  /// Requests slower than this (ms) are flagged as slow.
+  static const int _slowThresholdMs = 3000;
+
+  /// We use the extra map in RequestOptions to carry the start timestamp
+  /// through to the response/error callback.
+  static const String _startTimeKey = '_requestStartTime';
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    options.extra[_startTimeKey] = DateTime.now().millisecondsSinceEpoch;
+    handler.next(options);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    _record(
+      options: response.requestOptions,
+      statusCode: response.statusCode ?? 0,
+      isError: false,
+    );
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _record(
+      options: err.requestOptions,
+      statusCode: err.response?.statusCode ?? 0,
+      isError: true,
+    );
+    handler.next(err);
+  }
+
+  void _record({
+    required RequestOptions options,
+    required int statusCode,
+    required bool isError,
+  }) {
+    final startTime = options.extra[_startTimeKey] as int?;
+    if (startTime == null) return;
+
+    final durationMs = DateTime.now().millisecondsSinceEpoch - startTime;
+    final path = '${options.method} ${options.path}';
+    final isSlow = durationMs >= _slowThresholdMs;
+
+    if (kDebugMode) {
+      final label = isSlow ? '..... SLOW' : '.... fast';
+      debugPrint('$label API $path → $statusCode in ${durationMs}ms');
+    }
+
+    // Fire-and-forget analytics report (non-blocking)
+    AnalyticsService.instance.logEvent('api_response_time', params: {
+      'path': options.path,
+      'method': options.method,
+      'status_code': statusCode,
+      'duration_ms': durationMs,
+      'is_slow': isSlow.toString(),
+      'is_error': isError.toString(),
+    });
+
+    if (isSlow) {
+      AnalyticsService.instance.logEvent('slow_api_detected', params: {
+        'path': options.path,
+        'method': options.method,
+        'duration_ms': durationMs,
+        'threshold_ms': _slowThresholdMs,
+        'status_code': statusCode,
+      });
     }
   }
 }

@@ -7,10 +7,12 @@ import 'package:effulgence26_mobile_app/components/common/particle_background.da
 import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
 
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../components/loading/loading_indicators.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -45,10 +47,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
-        if (mounted) {
+        final croppedFile = await _cropImage(File(image.path));
+        
+        if (croppedFile != null && mounted) {
           _showSnackBar("Uploading image...", AppColors.primary);
           context.read<ProfileCubit>().updateProfile(
-            imageFile: File(image.path),
+            imageFile: croppedFile,
           );
         }
       }
@@ -57,6 +61,47 @@ class _UserProfilePageState extends State<UserProfilePage> {
         _showSnackBar("Failed to pick image: $e", AppColors.error);
       }
     }
+  }
+
+  Future<File?> _cropImage(File imageFile) async {
+    try {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: imageFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Edit Photo',
+            toolbarColor: AppColors.bgPrimary,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            backgroundColor: AppColors.bgSecondary,
+            activeControlsWidgetColor: AppColors.primary,
+            dimmedLayerColor: Colors.black.withOpacity(0.8),
+            cropFrameColor: AppColors.primary,
+            cropGridColor: AppColors.primary.withOpacity(0.5),
+            hideBottomControls: false,
+          ),
+          IOSUiSettings(
+            title: 'Edit Photo',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            aspectRatioPickerButtonHidden: true,
+            rectX: 0.0,
+            rectY: 0.0,
+            rectWidth: 1080.0,
+            rectHeight: 1080.0,
+            minimumAspectRatio: 1.0,
+          ),
+        ],
+      );
+      
+      if (croppedFile != null) {
+        return File(croppedFile.path);
+      }
+    } catch (e) {
+      debugPrint('Error cropping image: $e');
+    }
+    return null;
   }
 
   @override
@@ -217,10 +262,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
           CircleAvatar(
             radius: 50,
             backgroundColor: AppColors.surface,
-            backgroundImage: profile.imageUrl?.isNotEmpty == true
+            backgroundImage: UrlUtils.isValidUrl(profile.imageUrl)
                 ? CachedNetworkImageProvider(profile.imageUrl!)
                 : null,
-            child: profile.imageUrl?.isNotEmpty == true
+            child: UrlUtils.isValidUrl(profile.imageUrl)
                 ? null
                 : Icon(
                     Icons.person_rounded,

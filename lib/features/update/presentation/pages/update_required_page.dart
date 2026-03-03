@@ -1,13 +1,13 @@
-import 'package:effulgence26_mobile_app/core/services/update_service.dart';
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UpdateRequiredPage extends StatelessWidget {
-  final UpdateService updateService;
+  final RemoteConfigService remoteConfigService;
 
-  const UpdateRequiredPage({super.key, required this.updateService});
+  const UpdateRequiredPage({super.key, required this.remoteConfigService});
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class UpdateRequiredPage extends StatelessWidget {
   }
 
   Future<void> _launchStoreUrl() async {
-    final url = updateService.getStoreUrl();
+    final url = remoteConfigService.getStoreUrl();
     if (url.isNotEmpty) {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {

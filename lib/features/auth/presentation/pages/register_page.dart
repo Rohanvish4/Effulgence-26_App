@@ -1,4 +1,4 @@
-import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -14,7 +14,9 @@ import '../cubit/auth_state.dart';
 
 /// Register Page
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  final Map<String, dynamic>? googleUser;
+
+  const RegisterPage({super.key, this.googleUser});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -31,15 +33,11 @@ class _RegisterPageState extends State<RegisterPage>
   final _collegeNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _otpController = TextEditingController();
-
   // State
-  String _step = 'form'; // 'form' or 'verify'
   bool _isCollegeLocked = false;
-  int _resendCooldown = 0;
-  Timer? _resendTimer;
-  Map<String, dynamic>? _registrationData;
   late AnimationController _glowController;
+  bool _isGoogleSignup = false;
+  String? _googleIdToken;
 
   static const String _knitEmailSuffix = '@knit.ac.in';
   static const String _knitCollegeName =
@@ -53,7 +51,35 @@ class _RegisterPageState extends State<RegisterPage>
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
+    if (widget.googleUser != null) {
+      _isGoogleSignup = true;
+      _googleIdToken = widget.googleUser!['idToken'];
+      _nameController.text = widget.googleUser!['name'] ?? '';
+      _emailController.text = widget.googleUser!['email'] ?? '';
+    }
+
+    // Also check if we arrived here via router redirect (no extra data)
+    // by reading the AuthCubit state directly
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isGoogleSignup) {
+        final authState = context.read<AuthCubit>().state;
+        if (authState is GoogleUserNotRegistered) {
+          setState(() {
+            _isGoogleSignup = true;
+            _googleIdToken = authState.idToken;
+            _nameController.text = authState.name ?? '';
+            _emailController.text = authState.email;
+            _checkKnitEmail();
+          });
+        }
+      }
+    });
+
     _emailController.addListener(_checkKnitEmail);
+    // Trigger check for google email immediately
+    if (_isGoogleSignup) {
+      _checkKnitEmail();
+    }
   }
 
   @override
@@ -64,8 +90,9 @@ class _RegisterPageState extends State<RegisterPage>
     _collegeNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _otpController.dispose();
-    _resendTimer?.cancel();
+
+    // _otpController removed
+    // _resendTimer removed
     _glowController.dispose();
     super.dispose();
   }
@@ -89,80 +116,28 @@ class _RegisterPageState extends State<RegisterPage>
     }
   }
 
-  void _startResendCooldown() {
-    setState(() {
-      _resendCooldown = 60;
-    });
-    _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_resendCooldown > 0) {
-        setState(() {
-          _resendCooldown--;
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
+
 
   void _onRegister() {
     if (_formKey.currentState?.validate() ?? false) {
-      // Store data for resend
-      _registrationData = {
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'password': _passwordController.text,
-        'mobile': int.parse(_mobileController.text.trim()),
-        'collegeName': _collegeNameController.text.trim(),
-      };
-
-      context.read<AuthCubit>().register(
-        name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        mobile: int.parse(_mobileController.text.trim()),
-        collegeName: _collegeNameController.text.trim(),
-      );
+      if (_isGoogleSignup) {
+        // Direct Google Registration
+        context.read<AuthCubit>().googleRegister(
+          idToken: _googleIdToken!,
+          mobile: _mobileController.text.trim(),
+          collegeName: _collegeNameController.text.trim(),
+          password: _passwordController.text,
+        );
+      } else {
+        // Manual registration removed
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Please sign up with Google.')),
+        );
+      }
     }
   }
 
-  void _onVerifyOtp() {
-    if (_otpController.text.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Please enter a valid 6-digit OTP'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-      return;
-    }
 
-    context.read<AuthCubit>().verifyOtp(
-      email: _emailController.text.trim(),
-      otp: _otpController.text.trim(),
-    );
-  }
-
-  void _onResendOtp() {
-    if (_resendCooldown > 0 || _registrationData == null) return;
-
-    context.read<AuthCubit>().resendOtp(
-      name: _registrationData!['name'],
-      email: _registrationData!['email'],
-      password: _registrationData!['password'],
-      mobile: _registrationData!['mobile'],
-      collegeName: _registrationData!['collegeName'],
-    );
-  }
-
-  void _backToForm() {
-    setState(() {
-      _step = 'form';
-      _otpController.clear();
-      _resendTimer?.cancel();
-      _resendCooldown = 0;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,19 +149,8 @@ class _RegisterPageState extends State<RegisterPage>
           onTap: () => FocusScope.of(context).unfocus(),
           child: BlocConsumer<AuthCubit, AuthState>(
             listener: (context, state) {
-              if (state is AuthOtpSent) {
-                setState(() {
-                  _step = 'verify';
-                });
-                _startResendCooldown();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              } else if (state is AuthOtpVerified ||
-                  state is AuthRegistrationSuccess) {
+              if (state is AuthRegistrationSuccess || 
+                  state is AuthAuthenticated) { // Handle AuthAuthenticated for Google Sign Up success
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Registration successful!'),
@@ -201,6 +165,15 @@ class _RegisterPageState extends State<RegisterPage>
                     backgroundColor: AppColors.error,
                   ),
                 );
+              } else if (state is GoogleUserNotRegistered) {
+                setState(() {
+                  _isGoogleSignup = true;
+                  _googleIdToken = state.idToken;
+                  _nameController.text = state.name ?? '';
+                  _emailController.text = state.email;
+                  _checkKnitEmail();
+                });
+
               }
             },
             builder: (context, state) {
@@ -214,17 +187,18 @@ class _RegisterPageState extends State<RegisterPage>
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: AppSpacing.xl),
+                        const SizedBox(height: AppSpacing.sm),
 
                         // Logo and branding (Consistent with LoginPage)
                         Center(
                           child: Column(
                             children: [
-                              SvgPicture.asset(
-                                AppAssets.logo,
-                                width: 100,
-                                height: 100,
-                              ),
+                              Image.asset(
+                        AppAssets.logoPng,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.contain,
+                      ),
                               const SizedBox(height: AppSpacing.md),
                               SvgPicture.asset(AppAssets.textSvg, width: 180),
                               const SizedBox(height: AppSpacing.xs),
@@ -232,14 +206,14 @@ class _RegisterPageState extends State<RegisterPage>
                                 'INNOVATION AND BEYOND',
                                 style: AppTextStyles.labelSmall.copyWith(
                                   letterSpacing: 2.5,
-                                  color: AppColors.textMuted,
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                        const SizedBox(height: AppSpacing.xxl),
+                        const SizedBox(height: AppSpacing.lg),
 
                         // Glassmorphism Card
                         Container(
@@ -262,18 +236,13 @@ class _RegisterPageState extends State<RegisterPage>
                             ),
                           ),
                           padding: const EdgeInsets.all(AppSpacing.lg),
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: _step == 'form'
-                                ? _buildRegistrationForm(isLoading)
-                                : _buildOtpVerification(isLoading),
-                          ),
+                          child: _buildRegistrationForm(isLoading),
                         ),
 
-                        const SizedBox(height: AppSpacing.lg),
+                        const SizedBox(height: AppSpacing.md),
 
                         // Login Link
-                        if (_step == 'form')
+                        if (!_isGoogleSignup)
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -296,7 +265,7 @@ class _RegisterPageState extends State<RegisterPage>
                             ],
                           ),
 
-                        const SizedBox(height: AppSpacing.xl),
+                        const SizedBox(height: AppSpacing.md),
                       ],
                     ),
                   ),
@@ -317,232 +286,198 @@ class _RegisterPageState extends State<RegisterPage>
         key: const ValueKey('form'),
         children: [
           Text(
-            'Create Account',
+            _isGoogleSignup ? 'Complete Profile' : 'Join Effulgence\'26',
             style: AppTextStyles.headlineMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Register to participate in Effulgence\'26',
+            _isGoogleSignup 
+              ? 'Welcome, ${_nameController.text.split(' ').first}!\nJust a few more details to finish setup.' 
+              : 'Sign in with your Google account to get started.',
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
             ),
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.md),
 
-          // KNIT Warning
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.info_outline, color: Colors.amber, size: 16),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    'KNIT students must use their official college email.',
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: Colors.amber,
+          if (_isGoogleSignup) ...[
+            // User Info Card
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(color: AppColors.primary.withValues(alpha:0.3)),
+              ),
+              child: Row(
+                children: [
+                   CircleAvatar(
+                    radius: 24,
+                    backgroundImage: NetworkImage(
+                        widget.googleUser?['photoUrl'] ?? 
+                        (context.read<AuthCubit>().state is GoogleUserNotRegistered ? 
+                        (context.read<AuthCubit>().state as GoogleUserNotRegistered).photoUrl ?? '' : ''),
+                    ),
+                    backgroundColor: AppColors.primary.withValues(alpha:0.1),
+                    onBackgroundImageError: (_, __) {},
+                    child: (widget.googleUser?['photoUrl'] == null && 
+                           (context.read<AuthCubit>().state is! GoogleUserNotRegistered || 
+                            (context.read<AuthCubit>().state as GoogleUserNotRegistered).photoUrl == null))
+                        ? Text(
+                            _nameController.text.isNotEmpty ? _nameController.text[0].toUpperCase() : 'U',
+                            style: AppTextStyles.titleLarge.copyWith(color: AppColors.primary),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _nameController.text,
+                          style: AppTextStyles.titleMedium,
+                        ),
+                        Text(
+                          _emailController.text,
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const Icon(Icons.check_circle, color: AppColors.success),
+                ],
+              ),
             ),
-          ),
+            const SizedBox(height: AppSpacing.md),
 
-          const SizedBox(height: AppSpacing.lg),
-
-          AppTextField(
-            label: 'Full Name',
-            hint: 'Enter your full name',
-            controller: _nameController,
-            keyboardType: TextInputType.name,
-            prefixIcon: Icons.person_outlined,
-            validator: Validators.validateName,
-            enabled: !isLoading,
-          ),
-          const SizedBox(height: AppSpacing.md),
-
-          AppTextField(
-            label: 'Email',
-            hint: 'Enter your email',
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.email_outlined,
-            validator: Validators.validateEmail,
-            enabled: !isLoading,
-          ),
-          if (_isCollegeLocked)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, left: 4),
-              child: Text(
-                '✓ KNIT email detected',
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.success,
+            // College Warning if needed (only relevant if we are detecting email, which we do automatically)
+            if (_isCollegeLocked)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.amber, size: 16),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          'KNIT students must use their official college email.',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: Colors.amber,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+              ),
+
+             AppTextField(
+              label: 'Mobile Number',
+              hint: 'Enter your mobile number',
+              controller: _mobileController,
+              keyboardType: TextInputType.phone,
+              prefixIcon: Icons.phone_outlined,
+              validator: Validators.validatePhone,
+              enabled: !isLoading,
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            Opacity(
+              opacity: _isCollegeLocked ? 0.7 : 1.0,
+              child: AppTextField(
+                label: 'College Name',
+                hint: 'Enter your college name',
+                controller: _collegeNameController,
+                keyboardType: TextInputType.text,
+                prefixIcon: Icons.school_outlined,
+                validator: Validators.validateCollegeName,
+                enabled: !isLoading && !_isCollegeLocked,
               ),
             ),
 
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
 
-          AppTextField(
-            label: 'Mobile Number',
-            hint: 'Enter your mobile number',
-            controller: _mobileController,
-            keyboardType: TextInputType.phone,
-            prefixIcon: Icons.phone_outlined,
-            validator: Validators.validatePhone,
-            enabled: !isLoading,
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          Opacity(
-            opacity: _isCollegeLocked ? 0.7 : 1.0,
-            child: AppTextField(
-              label: 'College Name',
-              hint: 'Enter your college name',
-              controller: _collegeNameController,
-              keyboardType: TextInputType.text,
-              prefixIcon: Icons.school_outlined,
-              validator: Validators.validateCollegeName,
-              enabled: !isLoading && !_isCollegeLocked,
+            AppTextField(
+              label: 'Create Password',
+              hint: 'Set a password for your account',
+              controller: _passwordController,
+              obscureText: true,
+              prefixIcon: Icons.lock_outlined,
+              validator: Validators.validatePassword,
+              enabled: !isLoading,
             ),
-          ),
 
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
 
-          AppTextField(
-            label: 'Password',
-            hint: 'Create a password',
-            controller: _passwordController,
-            obscureText: true,
-            prefixIcon: Icons.lock_outlined,
-            validator: Validators.validatePassword,
-            enabled: !isLoading,
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          AppTextField(
-            label: 'Confirm Password',
-            hint: 'Confirm your password',
-            controller: _confirmPasswordController,
-            obscureText: true,
-            prefixIcon: Icons.lock_outlined,
-            validator: (value) => Validators.validateConfirmPassword(
-              value,
-              _passwordController.text,
+            AppTextField(
+              label: 'Confirm Password',
+              hint: 'Confirm your password',
+              controller: _confirmPasswordController,
+              obscureText: true,
+              prefixIcon: Icons.lock_outlined,
+              validator: (value) => Validators.validateConfirmPassword(
+                value,
+                _passwordController.text,
+              ),
+              onSubmitted: (_) => isLoading ? null : _onRegister(),
+              enabled: !isLoading,
             ),
-            onSubmitted: (_) => isLoading ? null : _onRegister(),
-            enabled: !isLoading,
-          ),
 
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Password must be 8+ chars with 1 letter & 1 number.',
-            style: AppTextStyles.labelSmall.copyWith(
-              color: AppColors.textSecondary,
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Password must be 8+ chars with 1 letter & 1 number.',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
 
-          const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.lg),
 
-          GradientButton(
-            text: isLoading ? 'SENDING OTP...' : 'GET OTP',
-            isLoading: isLoading,
-            onPressed: _onRegister,
-          ),
+            GradientButton(
+              text: isLoading ? 'SETTING UP...' : 'COMPLETE SETUP',
+              isLoading: isLoading,
+              onPressed: _onRegister,
+            ),
+          ] else ...[
+            // Initial State - Only Google Sign In
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: GoogleButton(
+                onPressed: () {
+                   context.read<AuthCubit>().googleLogin();
+                },
+                isLoading: isLoading, 
+                text: "Register with Google",
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Text(
+                'Note: KNIT students must use their college mail ID (@knit.ac.in).\nStudents from other colleges can use any email.',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.warning,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
         ],
       ),
-    );
-  }
-
-  Widget _buildOtpVerification(bool isLoading) {
-    return Column(
-      key: const ValueKey('verify'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Verify Email',
-          style: AppTextStyles.headlineMedium,
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Text(
-          'Enter the 6-digit code sent to',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        Text(
-          _emailController.text,
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primary),
-          textAlign: TextAlign.center,
-        ),
-
-        const SizedBox(height: AppSpacing.xl),
-
-        AppTextField(
-          label: 'Enter OTP',
-          hint: '000000',
-          controller: _otpController,
-          keyboardType: TextInputType.number,
-
-          // Increase letter spacing for OTP feel
-          style: AppTextStyles.headlineSmall.copyWith(letterSpacing: 8),
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          enabled: !isLoading,
-        ),
-
-        const SizedBox(height: AppSpacing.lg),
-
-        GradientButton(
-          text: isLoading ? 'VERIFYING...' : 'VERIFY & REGISTER',
-          isLoading: isLoading,
-          onPressed: _onVerifyOtp,
-        ),
-
-        const SizedBox(height: AppSpacing.md),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton(
-              onPressed: isLoading ? null : _backToForm,
-              child: Text(
-                '← Edit Details',
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: (isLoading || _resendCooldown > 0)
-                  ? null
-                  : _onResendOtp,
-              child: Text(
-                _resendCooldown > 0
-                    ? 'Resend in ${_resendCooldown}s'
-                    : 'Resend OTP',
-                style: AppTextStyles.labelMedium.copyWith(
-                  color: _resendCooldown > 0
-                      ? AppColors.textSecondary
-                      : AppColors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

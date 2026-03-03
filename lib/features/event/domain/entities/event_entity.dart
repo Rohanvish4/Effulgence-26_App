@@ -14,7 +14,10 @@ class EventEntity {
   final DateTime? endTime; // New field
   final DateTime registrationDeadline;
   final String status;
-  final bool isDeleted; // New field
+  final bool isDeleted;
+  final String? whatsappGroupLink;
+  final String? rulebookPdf;
+  final List<EventContact>? contacts;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -40,6 +43,9 @@ class EventEntity {
     this.teamConfig,
     this.endTime,
     required this.isDeleted,
+    this.whatsappGroupLink,
+    this.rulebookPdf,
+    this.contacts,
   });
 
   // Computed properties
@@ -68,4 +74,16 @@ class TeamConfig {
   final int maxSize;
 
   const TeamConfig({required this.minSize, required this.maxSize});
+}
+
+class EventContact {
+  final String name;
+  final String number;
+  final String? post;
+
+  const EventContact({
+    required this.name,
+    required this.number,
+    this.post,
+  });
 }

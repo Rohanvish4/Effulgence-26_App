@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:effulgence26_mobile_app/core/constants/app_env.dart';
+import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
 
@@ -12,8 +14,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
+import 'package:effulgence26_mobile_app/core/services/analytics_service.dart';
 import '../../../../../components/components.dart';
 
+import 'package:badges/badges.dart' as badges;
+import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_cubit.dart';
+import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_state.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/countdown_timer_widget.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/faq_widget.dart';
 
@@ -71,6 +78,9 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
+    // Track screen view in analytics
+    AnalyticsService.instance.logScreenView(screenName: 'HomePage');
+    
     // Use addPostFrameCallback to ensure context is fully ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -91,6 +101,7 @@ class _HomePageState extends State<HomePage>
           physics: const BouncingScrollPhysics(),
           slivers: [
             _buildAppBar(),
+            _buildRemoteConfigBanner(context),
             _buildWelcomeSection(),
             // _buildQuickStats(),
             _buildHighlightsCarousel(),
@@ -109,18 +120,105 @@ class _HomePageState extends State<HomePage>
         ),
       ),
     );
+
+  }
+
+  // Remote Config Banner
+  Widget _buildRemoteConfigBanner(BuildContext context) {
+    try {
+      final remoteConfig = context.read<RemoteConfigService>();
+      if (!remoteConfig.isHomeBannerVisible) return const SliverToBoxAdapter(child: SizedBox.shrink());
+      print("remoteConfig.homeBannerText ");
+      print(remoteConfig.homeBannerText);
+
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.2),
+                  AppColors.secondary.withValues(alpha: 0.2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.5),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.campaign_rounded,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    remoteConfig.homeBannerText,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      // Fail silently if provider not found (shouldn't happen)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
   }
 
   // App Bar
   Widget _buildAppBar() {
     return SliverAppBar(
-      actions: [IconButton(
-        icon: const Icon(Icons.notifications_rounded, color: AppColors.primary),
-        onPressed: () {
-          HapticFeedback.vibrate();
-          context.push('/notifications');
-        },
-      ),],
+      actions: [
+        BlocBuilder<NotificationCubit, NotificationState>(
+          builder: (context, state) {
+            int unreadCount = 0;
+            if (state is NotificationLoaded) {
+              final remoteConfig = context.read<RemoteConfigService>();
+              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
+              final validNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate));
+              unreadCount = validNotifications.where((n) => !n.isRead).length;
+            }
+
+            return IconButton(
+              icon: badges.Badge(
+                showBadge: unreadCount > 0,
+                badgeContent: Text(
+                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+                child: const Icon(Icons.notifications_rounded, color: AppColors.primary),
+              ),
+              onPressed: () {
+                HapticFeedback.vibrate();
+                context.push('/notifications');
+              },
+            );
+          },
+        ),
+        SizedBox(width: 10,)
+      ],
       expandedHeight: 220,
       pinned: true,
       leading: IconButton(
@@ -341,7 +439,7 @@ class _HomePageState extends State<HomePage>
           fit: StackFit.expand,
           children: [
             // Event Image
-            if (event.coverImage != null && event.coverImage.isNotEmpty)
+            if (UrlUtils.isValidUrl(event.coverImage))
               CachedNetworkImage(
                         imageUrl: event.coverImage!,
                         fit: BoxFit.cover,
@@ -860,7 +958,7 @@ class _HomePageState extends State<HomePage>
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    launchUrl(Uri.parse("https://effulgence26.in"));
+                    launchUrl(Uri.parse(AppEnv.websiteBaseUrl));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,

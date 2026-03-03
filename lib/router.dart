@@ -14,6 +14,8 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/event/presentation/pages/event_details_page.dart';
 import 'features/event/presentation/pages/my_events_page.dart';
+import 'features/event/presentation/pages/my_invitations_page.dart';
+import 'features/event/presentation/pages/team_management_page.dart';
 import 'features/sponsors/presentation/pages/sponsors_list_page.dart';
 import 'features/sponsors/presentation/pages/sponsor_booth_page.dart';
 import 'features/sponsors/presentation/cubit/sponsors_cubit.dart';
@@ -64,30 +66,56 @@ class AppRouter {
       final isAuthenticated = authState is AuthAuthenticated;
       final isRegistrationSuccess = authState is AuthRegistrationSuccess;
 
+        // Some authenticated flows emit intermediate states while the session
+        // is still valid (e.g. profile update, admin user list). Treat them as
+        // authenticated to avoid redirecting to /login mid-session.
+        final isAuthenticatedLike =
+          isAuthenticated ||
+          isRegistrationSuccess ||
+          authState is AuthOtpVerified ||
+          authState is AuthProfileUpdated ||
+          authState is AuthUserRoleUpdated ||
+          authState is AuthUsersLoaded ||
+          authState is AuthUserStatusApproved;
+
       // Check if auth is still loading (checking login status) or initial state
       final isLoading = authState is AuthLoading || authState is AuthInitial;
 
       debugPrint(
-        ' isAuthRoute: $isAuthRoute, isAuthenticated: $isAuthenticated, isRegistrationSuccess: $isRegistrationSuccess, isLoading: $isLoading',
+        ' isAuthRoute: $isAuthRoute, isAuthenticated: $isAuthenticatedLike, isRegistrationSuccess: $isRegistrationSuccess, isLoading: $isLoading',
       );
 
-      // If auth is still loading, redirect to splash if not already there
+      // If auth is still loading, redirect to splash ONLY if not already on an auth route
+      // This allows the Login page to stay mounted and show loading/error states
       if (isLoading) {
+        if (isAuthRoute) {
+          debugPrint(' Auth loading but on auth route, staying on current route');
+          return null;
+        }
         debugPrint(' Auth loading/initial, redirecting to /splash');
         if (state.matchedLocation != '/splash') return '/splash';
+        return null;
+      }
+
+      // If Google user is not registered, redirect to register page
+      if (authState is GoogleUserNotRegistered) {
+        if (state.matchedLocation != '/register') {
+          debugPrint(' Google user not registered, redirecting to /register');
+          return '/register';
+        }
         return null;
       }
 
       // If user is NOT authenticated and NOT registration success and NOT on auth route, redirect to login
       // Fixed: Previously only checked !isAuthenticated, but AuthRegistrationSuccess should also grant access
       // This prevents redirecting to login after successful registration
-      if (!isAuthenticated && !isRegistrationSuccess && !isAuthRoute) {
+      if (!isAuthenticatedLike && !isAuthRoute) {
         debugPrint(' Not authenticated, redirecting to /login');
         return '/login';
       }
 
       // If user IS authenticated and (ON auth route OR ON splash), redirect to home
-      if (isAuthenticated && (isAuthRoute || state.matchedLocation == '/splash')) {
+      if (isAuthenticatedLike && (isAuthRoute || state.matchedLocation == '/splash')) {
         debugPrint('Authenticated on auth/splash route, redirecting to /');
         return '/';
       }
@@ -118,7 +146,10 @@ class AppRouter {
       GoRoute(
         path: '/register',
         name: 'register',
-        builder: (context, state) => const RegisterPage(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return RegisterPage(googleUser: extra);
+        },
       ),
 
       // Splash Route
@@ -250,6 +281,23 @@ class AppRouter {
         path: '/about',
         name: 'about',
         builder: (context, state) => const AboutEffulgencePage(),
+      ),
+
+      // My Invitations Route
+      GoRoute(
+        path: '/my-invitations',
+        name: 'myInvitations',
+        builder: (context, state) => const MyInvitationsPage(),
+      ),
+
+      // Team Management Route
+      GoRoute(
+        path: '/team-management/:eventId',
+        name: 'teamManagement',
+        builder: (context, state) {
+          final eventId = state.pathParameters['eventId']!;
+          return TeamManagementPage(eventId: eventId);
+        },
       ),
 
       // Future x Routes

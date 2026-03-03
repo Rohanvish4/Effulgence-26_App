@@ -230,11 +230,27 @@ class _MyEventsPageState extends State<MyEventsPage> {
   }
 
   Widget _buildParticipationCard(BuildContext context, ParticipationEntity p) {
+    final eventList = context
+        .read<EventsCubit>()
+        .state
+        .events
+        .where((e) => e.id == p.eventId)
+        .toList();
+    final eventName =
+        eventList.isNotEmpty ? eventList.first.title : 'Unknown Event';
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.2)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
@@ -256,15 +272,33 @@ class _MyEventsPageState extends State<MyEventsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              p.teamName?.toUpperCase() ?? 'SOLO DEPLOYMENT',
+                              eventName.toUpperCase(),
                               style: AppTextStyles.titleMedium.copyWith(
                                 fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
+                            const SizedBox(height: 4),
                             Text(
-                              'REF: ${p.eventId.substring(0, 12).toUpperCase()}',
+                              p.isTeam
+                                  ? 'TEAM: ${p.teamName?.toUpperCase() ?? "N/A"}'
+                                  : 'SOLO PARTICIPATION',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: AppColors.primary,
+                                letterSpacing: 1,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'REF: ${p.eventId.isNotEmpty ? (p.eventId.length > 12 ? p.eventId.substring(0, 12).toUpperCase() : p.eventId.toUpperCase()) : "N/A"}',
                               style: AppTextStyles.labelSmall.copyWith(
                                 color: AppColors.textMuted,
+                                fontSize: 10,
                                 letterSpacing: 1,
                               ),
                             ),

@@ -57,9 +57,8 @@ class ContactUsPage extends StatelessWidget {
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   children: [
-                    const SizedBox(height: AppSpacing.md),
                     Text(
-                      "OUR LEGION",
+                      "Technical Captains",
                       style: AppTextStyles.displayMedium.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.bold,
@@ -68,7 +67,7 @@ class ContactUsPage extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      "The dedicated corps behind Effulgence '26.\nUnited by code, driven by design.",
+                      "Report .",
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: AppColors.textMuted,
                       ),
@@ -80,27 +79,27 @@ class ContactUsPage extends StatelessWidget {
 
                     const SizedBox(height: AppSpacing.xxl),
                     
-                    _buildTeamGrid(_teamMembers),
+                    // _buildTeamGrid(_teamMembers),
 
                     const SizedBox(height: AppSpacing.xxl),
                     // Join CTA
-                    Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                          border: Border.all(color: AppColors.primary.withValues(alpha:0.5)),
-                        ),
-                        child: Text(
-                          "Want to join the ranks? Contact specific coordinators.",
-                          style: AppTextStyles.labelMedium.copyWith(
-                            color: AppColors.primary,
-                            letterSpacing: 1.2,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                    // Container(
+                    //     padding: const EdgeInsets.symmetric(
+                    //         horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.black,
+                    //       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                    //       border: Border.all(color: AppColors.primary.withValues(alpha:0.5)),
+                    //     ),
+                    //     child: Text(
+                    //       "Want to join the ranks? Contact specific coordinators.",
+                    //       style: AppTextStyles.labelMedium.copyWith(
+                    //         color: AppColors.primary,
+                    //         letterSpacing: 1.2,
+                    //       ),
+                    //       textAlign: TextAlign.center,
+                    //     ),
+                    //   ),
                        const SizedBox(height: AppSpacing.xxl),
                   ],
                 ),
@@ -147,7 +146,7 @@ class _TeamMemberCard extends StatelessWidget {
       borderRadius: AppSpacing.radiusMd,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface.withOpacity(0.8),
+          color: AppColors.surface.withValues(alpha:0.8),
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         ),
         clipBehavior: Clip.antiAlias,
@@ -173,7 +172,7 @@ class _TeamMemberCard extends StatelessWidget {
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              AppColors.surface.withOpacity(0.9),
+                              AppColors.surface.withValues(alpha:0.9),
                             ],
                           ),
                         ),
@@ -265,6 +264,7 @@ class _TeamMemberCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _SocialLink extends StatelessWidget {
   final IconData icon;
   final String url;
@@ -401,7 +401,7 @@ class _GradientPainter extends CustomPainter {
       colors: [
         Colors.transparent,
         AppColors.primary, // Teal
-        AppColors.primary.withOpacity(0.5),
+        AppColors.primary.withValues(alpha:0.5),
         Colors.transparent,
       ],
       stops: const [0.0, 0.2, 0.4, 1.0],

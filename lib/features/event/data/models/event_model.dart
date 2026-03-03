@@ -20,6 +20,9 @@ class EventModel extends EventEntity {
     super.updatedAt,
     super.endTime,
     required super.isDeleted,
+    super.whatsappGroupLink,
+    super.rulebookPdf,
+    super.contacts,
   });
 
   /// Create from JSON
@@ -51,6 +54,17 @@ class EventModel extends EventEntity {
           : DateTime.now(),
       status: json['status'] ?? 'UPCOMING',
       isDeleted: json['isDeleted'] ?? false,
+      whatsappGroupLink: json['whatsappGroupLink'],
+      rulebookPdf: json['rulebookPdf'],
+      contacts: json['contacts'] != null
+          ? (json['contacts'] as List)
+              .map((c) => EventContact(
+                    name: c['name'] ?? '',
+                    number: c['number'] ?? '',
+                    post: c['post'],
+                  ))
+              .toList()
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'])
           : null,
@@ -80,6 +94,15 @@ class EventModel extends EventEntity {
       'registrationDeadline': registrationDeadline.toIso8601String(),
       'status': status,
       'isDeleted': isDeleted,
+      'whatsappGroupLink': whatsappGroupLink,
+      'rulebookPdf': rulebookPdf,
+      'contacts': contacts
+          ?.map((c) => {
+                'name': c.name,
+                'number': c.number,
+                'post': c.post,
+              })
+          .toList(),
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -102,6 +125,9 @@ class EventModel extends EventEntity {
     DateTime? registrationDeadline,
     String? status,
     bool? isDeleted,
+    String? whatsappGroupLink,
+    String? rulebookPdf,
+    List<EventContact>? contacts,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -121,6 +147,9 @@ class EventModel extends EventEntity {
       registrationDeadline: registrationDeadline ?? this.registrationDeadline,
       status: status ?? this.status,
       isDeleted: isDeleted ?? this.isDeleted,
+      whatsappGroupLink: whatsappGroupLink ?? this.whatsappGroupLink,
+      rulebookPdf: rulebookPdf ?? this.rulebookPdf,
+      contacts: contacts ?? this.contacts,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
