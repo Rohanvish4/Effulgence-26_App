@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -51,7 +52,7 @@ class _MyEventsPageState extends State<MyEventsPage> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: BlocListener<EventsCubit, EventsState>(
           listener: _handleStateChanges,
           child: RefreshIndicator(

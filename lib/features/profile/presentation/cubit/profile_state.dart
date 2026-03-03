@@ -1,4 +1,5 @@
 import 'package:effulgence26_mobile_app/features/profile/data/models/edit_response_model.dart';
+import 'package:effulgence26_mobile_app/features/profile/domain/entities/referral_entity.dart';
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/user_profile_entity.dart';
 
@@ -53,6 +54,24 @@ class ProfilePaymentSuccess extends ProfileState {}
 class ProfilePaymentError extends ProfileState {
   final String message;
   const ProfilePaymentError(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
+class ProfileReferralsLoading extends ProfileState {}
+
+class ProfileReferralsLoaded extends ProfileState {
+  final List<ReferralEntity> referrals;
+  const ProfileReferralsLoaded(this.referrals);
+
+  @override
+  List<Object?> get props => [referrals];
+}
+
+class ProfileReferralsError extends ProfileState {
+  final String message;
+  const ProfileReferralsError(this.message);
 
   @override
   List<Object?> get props => [message];

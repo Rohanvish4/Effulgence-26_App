@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_assets.dart';
 import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
@@ -152,7 +153,7 @@ class _EventsListPageState extends State<EventsListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: BlocListener<EventsCubit, EventsState>(
           listener: (context, state) {
             // Handle events loading success

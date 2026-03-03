@@ -4,6 +4,7 @@ import 'package:effulgence26_mobile_app/features/profile/data/models/edit_respon
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/network_info.dart';
+import '../../domain/entities/referral_entity.dart';
 import '../../domain/repositories/user_profile_repository.dart';
 import '../../domain/entities/user_profile_entity.dart';
 import '../datasources/user_profile_remote_datasource.dart';
@@ -148,6 +149,21 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
       );
 
       return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(message: e.message));
+    } catch (e) {
+      return Left(ServerFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ReferralEntity>>> getMyReferrals() async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure());
+    }
+    try {
+      final referrals = await remoteDataSource.getMyReferrals();
+      return Right(referrals);
     } on ServerException catch (e) {
       return Left(ServerFailure(message: e.message));
     } catch (e) {

@@ -1,3 +1,4 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
@@ -30,7 +31,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: SafeArea(
           child: Column(
             children: [

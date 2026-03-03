@@ -1,5 +1,7 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/services.dart';
 import 'package:effulgence26_mobile_app/components/buttons/app_button.dart';
 import 'package:effulgence26_mobile_app/components/common/effulgence_background_elements.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
@@ -108,8 +110,14 @@ class _UserProfilePageState extends State<UserProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: BlocConsumer<ProfileCubit, ProfileState>(
+          // Don't rebuild the profile page when referral states change
+          // (those are handled in MyReferralsPage)
+          buildWhen: (prev, curr) =>
+              curr is! ProfileReferralsLoading &&
+              curr is! ProfileReferralsLoaded &&
+              curr is! ProfileReferralsError,
           listener: (context, state) {
             if (state is ProfileError) {
               _showSnackBar(state.message, AppColors.error);
@@ -167,6 +175,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   // _buildIdCardButton(context, profile),
                   // const SizedBox(height: AppSpacing.md),
                   _buildInfoCard(profile),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (profile.registrationId != null)
+                    _buildReferralCard(profile),
                   const SizedBox(height: AppSpacing.sm),
                   if (profile.isSuperAdmin) ...[
                     const SizedBox(height: AppSpacing.md),
@@ -671,6 +682,139 @@ class _UserProfilePageState extends State<UserProfilePage> {
       default:
         return AppColors.error;
     }
+  }
+
+  Widget _buildReferralCard(UserProfileEntity profile) {
+    final referralCode = profile.registrationId ?? '';
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.15),
+            AppColors.primary.withValues(alpha: 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.card_giftcard_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'YOUR REFERRAL CODE',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Share your registration ID with friends to refer them to Effulgence\'26.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    referralCode,
+                    style: AppTextStyles.titleMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      fontFamily: 'Monospace',
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: referralCode));
+                    _showSnackBar('Referral code copied!', AppColors.primary);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.xs),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.copy_rounded,
+                      color: AppColors.primary,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          GestureDetector(
+            onTap: () => context.push('/my-referrals'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.group_rounded,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'VIEW MY REFERRALS',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppColors.primary,
+                    size: 12,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSnackBar(String message, Color color) {

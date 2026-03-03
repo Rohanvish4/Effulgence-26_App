@@ -1,4 +1,5 @@
 import 'package:effulgence26_mobile_app/core/providers/app_providers.dart';
+import 'package:effulgence26_mobile_app/core/services/shorebird_update_service.dart';
 import 'package:effulgence26_mobile_app/router.dart';
 import 'package:effulgence26_mobile_app/splash_screen.dart';
 import 'package:flutter/material.dart';
@@ -159,11 +160,59 @@ class _AppContentState extends State<_AppContent> {
   // Use a singleton-like pattern or late init for the router to survive re-builds
   late final AppRouter _appRouter;
 
+  // Scaffold messenger key for showing snackbars outside of context
+  final GlobalKey<ScaffoldMessengerState> _messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   @override
   void initState() {
     super.initState();
     // Initialize router with the existing AuthCubit
     _appRouter = AppRouter(authCubit: context.read<AuthCubit>());
+
+    // ── Shorebird OTA Patch Check ─────────────────────────────────────────
+    // Runs silently after the first frame so it never delays app startup.
+    // Downloads any available patch; the patch is applied on the NEXT cold
+    // start.  This is completely independent of the RemoteConfig forced-update
+    // mechanism which handles major/breaking version bumps.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForShorebirdPatch();
+    });
+  }
+
+  Future<void> _checkForShorebirdPatch() async {
+    final result =
+        await ShorebirdUpdateService.instance.checkAndDownloadPatch();
+
+    if (result == ShorebirdPatchResult.downloaded && mounted) {
+      _messengerKey.currentState?.showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.bgSecondary,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: AppColors.primary, width: 1),
+          ),
+          duration: const Duration(seconds: 5),
+          content: Row(
+            children: [
+              const Icon(Icons.system_update_alt_rounded,
+                  color: AppColors.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Update ready! Restart the app to apply.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -172,6 +221,7 @@ class _AppContentState extends State<_AppContent> {
       title: 'Effulgence 26',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
+      scaffoldMessengerKey: _messengerKey,
       // Production Optimization, Ensure the router handles deep links and redirects
       routerConfig: _appRouter.router,
       // Global builder for handling 2G Image loading issues

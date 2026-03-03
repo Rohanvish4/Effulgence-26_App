@@ -1,5 +1,5 @@
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'dart:ui';
-import 'package:effulgence26_mobile_app/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -70,7 +70,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: BlocListener<EventsCubit, EventsState>(
           listener: (context, state) {
             if (state.successMessage != null && !state.isOperationLoading) {

@@ -1,3 +1,5 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +22,7 @@ class SponsorBoothPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.dense,
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child: CustomScrollView(
           slivers: [
             _buildHeroAppBar(context),

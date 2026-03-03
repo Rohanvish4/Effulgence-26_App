@@ -27,8 +27,8 @@ class Validators {
       return 'Password is required';
     }
 
-    if (value.length < 8) {
-      return 'Password must be at least 8 characters';
+    if (value.length < AppConstants.minPasswordLength) {
+      return 'Password must be at least ${AppConstants.minPasswordLength} characters';
     }
 
     if (!RegExp(r'^(?=.*[A-Za-z])(?=.*\d).{8,}$').hasMatch(value)) {

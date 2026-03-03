@@ -9,19 +9,23 @@ class WidgetToPdfService {
   Future<Uint8List> captureAndGeneratePdf(GlobalKey key) async {
     try {
       // 1. Capture the Widget
+      final context = key.currentContext;
+      if (context == null) {
+        throw StateError('Widget is not mounted. Cannot capture.');
+      }
       RenderRepaintBoundary boundary =
-          key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+          context.findRenderObject() as RenderRepaintBoundary;
 
       // High-resolution capture (3.0 ratio = 300+ DPI equivalent)
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-     
-       // Optimized resolution capture (2.0 ratio = balanced quality/size)
-      // ui.Image image = await boundary.toImage(pixelRatio: 2.0);
 
       ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );
-      Uint8List pngBytes = byteData!.buffer.asUint8List();
+      if (byteData == null) {
+        throw StateError('Failed to convert widget image to byte data.');
+      }
+      Uint8List pngBytes = byteData.buffer.asUint8List();
 
       // 2. Define Custom Size
       // We match the exact dimensions used in your IdCardWidget (320 width)

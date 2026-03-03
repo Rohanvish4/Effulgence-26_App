@@ -83,4 +83,13 @@ class ProfileCubit extends Cubit<ProfileState> {
       loadProfile(); // Refresh profile to get updated status
     });
   }
+
+  Future<void> loadReferrals() async {
+    emit(ProfileReferralsLoading());
+    final result = await profileRepository.getMyReferrals();
+    result.fold(
+      (failure) => emit(ProfileReferralsError(failure.message)),
+      (referrals) => emit(ProfileReferralsLoaded(referrals)),
+    );
+  }
 }

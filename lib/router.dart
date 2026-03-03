@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_all_users_page.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/home_tab.dart';
 import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_edit_page.dart';
+import 'package:effulgence26_mobile_app/features/profile/presentation/pages/my_referrals_page.dart';
 import 'package:effulgence26_mobile_app/splash_screen.dart';
 import 'package:effulgence26_mobile_app/features/admin/presentation/pages/admin_web_page.dart';
 import 'package:effulgence26_mobile_app/features/contact/presentation/pages/contact_us_page.dart';
@@ -241,6 +243,13 @@ class AppRouter {
         builder: (context, state) => const QrCodePage(),
       ),
 
+      // My Referrals Route
+      GoRoute(
+        path: '/my-referrals',
+        name: 'myReferrals',
+        builder: (context, state) => const MyReferralsPage(),
+      ),
+
       // QR Scanner Route (Admin)
       GoRoute(
         path: '/qr-scanner',
@@ -345,7 +354,7 @@ class GoRouterRefreshStream extends ChangeNotifier {
     });
   }
 
-  late final dynamic _subscription;
+  late final StreamSubscription _subscription;
 
   @override
   void dispose() {

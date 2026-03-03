@@ -26,6 +26,9 @@ class ApiConstants {
   static const String qrCode = '/user/qrcode';
   static const String verifyQrCode = '/user/qrcode/verify';
 
+  // Referrals
+  static const String myReferrals = '/user/users/me/referrals';
+
   // Events Endpoints
   // GET /events - Get all events (public)
   static const String events = '/events';

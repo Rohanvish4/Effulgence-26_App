@@ -380,6 +380,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure());
@@ -390,6 +391,7 @@ class AuthRepositoryImpl implements AuthRepository {
         mobile: mobile,
         collegeName: collegeName,
         password: password,
+        referralRegId: referralRegId,
       );
       // Save user data
       if (response.user != null) {

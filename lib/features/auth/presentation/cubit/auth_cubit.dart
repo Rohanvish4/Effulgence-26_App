@@ -41,12 +41,15 @@ class AuthCubit extends Cubit<AuthState> {
         debugPrint('AuthCubit: Login success, syncing FCM token...');
         await notificationService.syncFcmToken();
         
+        
         // Track user in analytics
         final user = authResponse.user!;
-        await analytics.setUserId(user.id);
-        await analytics.setUserProperty(name: 'email', value: user.email);
-        await analytics.setUserProperty(name: 'name', value: user.name);
-        await analytics.setUserProperty(name: 'college', value: user.collegeName);
+        await analytics.identifyUser(
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          college: user.collegeName,
+        );
         await analytics.logLogin(method: 'email_password');
         debugPrint(' User tracked in analytics: ${user.email}');
         
@@ -103,10 +106,12 @@ class AuthCubit extends Cubit<AuthState> {
           await notificationService.syncFcmToken();
 
           final user = response.user!;
-          await analytics.setUserId(user.id);
-          await analytics.setUserProperty(name: 'email', value: user.email);
-          await analytics.setUserProperty(name: 'name', value: user.name);
-          await analytics.setUserProperty(name: 'college', value: user.collegeName);
+          await analytics.identifyUser(
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            college: user.collegeName,
+          );
           await analytics.logSignUp(method: 'email');
           debugPrint('New user registered and tracked: $email');
 
@@ -135,6 +140,16 @@ class AuthCubit extends Cubit<AuthState> {
           // Sync FCM Token
           debugPrint('AuthCubit: OTP Verified, syncing FCM token...');
           await notificationService.syncFcmToken();
+
+          final user = authResponse.user!;
+          await analytics.identifyUser(
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            college: user.collegeName,
+          );
+          await analytics.logSignUp(method: 'email_otp');
+          debugPrint('New user registered via OTP and tracked: ${user.email}');
 
           emit(
             AuthOtpVerified(
@@ -191,7 +206,7 @@ class AuthCubit extends Cubit<AuthState> {
     await notificationService.clearFcmToken();
     
     // Clear user from analytics
-    await analytics.setUserId(null);
+    await analytics.clearUser();
 
     final result = await authRepositoryImpl.logout();
 
@@ -220,8 +235,16 @@ class AuthCubit extends Cubit<AuthState> {
         emit(AuthError(message: failure.message));
       },
       (user) async {
-        // Sync FCM Token (useful if user session is valid but token wasn't synced)
+        // Sync FCM Token
         await notificationService.syncFcmToken();
+        
+        // Ensure user is identified in analytics on fresh session
+        await analytics.identifyUser(
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          college: user.collegeName,
+        );
         
         emit(AuthAuthenticated(user: user, message: 'Welcome back'));
       },
@@ -341,6 +364,13 @@ class AuthCubit extends Cubit<AuthState> {
           // Sync FCM Token
           await notificationService.syncFcmToken();
 
+          await analytics.identifyUser(
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            college: user.collegeName,
+          );
+
           emit(AuthAuthenticated(user: user, message: 'Welcome back'));
         },
       );
@@ -394,6 +424,16 @@ class AuthCubit extends Cubit<AuthState> {
           // Sync FCM Token
           await notificationService.syncFcmToken();
 
+          final user = authResponse.user!;
+          await analytics.identifyUser(
+            userId: user.id,
+            email: user.email,
+            name: user.name,
+            college: user.collegeName,
+          );
+          await analytics.logLogin(method: 'google');
+          debugPrint('Google login tracked: ${user.email}');
+
           emit(
             AuthAuthenticated(
               user: authResponse.user!,
@@ -414,6 +454,7 @@ class AuthCubit extends Cubit<AuthState> {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   }) async {
     emit(const AuthLoading());
     final result = await authRepositoryImpl.googleRegister(
@@ -421,6 +462,7 @@ class AuthCubit extends Cubit<AuthState> {
       mobile: mobile,
       collegeName: collegeName,
       password: password,
+      referralRegId: referralRegId,
     );
 
     result.fold(
@@ -430,6 +472,16 @@ class AuthCubit extends Cubit<AuthState> {
       (authResponse) async {
         // Sync FCM Token
         await notificationService.syncFcmToken();
+
+        final user = authResponse.user!;
+        await analytics.identifyUser(
+          userId: user.id,
+          email: user.email,
+          name: user.name,
+          college: user.collegeName,
+        );
+        await analytics.logSignUp(method: 'google');
+        debugPrint('Google register tracked: ${user.email}');
 
         emit(
           AuthAuthenticated(

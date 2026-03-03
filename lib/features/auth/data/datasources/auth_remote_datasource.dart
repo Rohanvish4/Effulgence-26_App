@@ -74,6 +74,7 @@ abstract class AuthRemoteDataSource {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   });
 }
 
@@ -278,6 +279,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String mobile,
     required String collegeName,
     required String password,
+    String? referralRegId,
   }) async {
     final response = await apiClient.post(
       '/user/auth/google-register',
@@ -286,6 +288,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'mobile': mobile,
         'collegeName': collegeName,
         'password': password,
+        if (referralRegId != null && referralRegId.isNotEmpty)
+          'referralRegId': referralRegId.trim(),
       },
     );
     return AuthResponseModel.fromJson(response.data);

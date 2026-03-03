@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../constants/app_env.dart';
 
@@ -15,13 +16,14 @@ class RemoteConfigService {
   static const String _keyEnableSponsors = 'enable_sponsors';
   static const String _keyEnableRegistrations = 'enable_registrations';
   static const String _keyNotificationExpiryTime = 'notification_expiry_time';
+  static const String _keyTechfestDay = 'techfest_day';
 
   Future<void> initialize() async {
     try {
       await _remoteConfig.setConfigSettings(
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
-          minimumFetchInterval: const Duration(minutes: 1), // Low interval for testing
+          minimumFetchInterval: Duration(minutes: kDebugMode ? 1 : 720), // 1 min for debug, 12 hours for production
         ),
       );
 
@@ -35,15 +37,16 @@ class RemoteConfigService {
         _keyEnableSponsors: true,
         _keyEnableRegistrations: true,
         _keyNotificationExpiryTime: 24,
+        _keyTechfestDay: 1,
       });
 
       await _remoteConfig.fetchAndActivate();
-      print('Remote Config fetched and activated');
-      print('Banner Visible: ${_remoteConfig.getBool(_keyHomeBannerVisible)}');
-      print('Banner Text: ${_remoteConfig.getString(_keyHomeBannerText)}');
+      debugPrint('Remote Config fetched and activated');
+      debugPrint('Banner Visible: ${_remoteConfig.getBool(_keyHomeBannerVisible)}');
+      debugPrint('Banner Text: ${_remoteConfig.getString(_keyHomeBannerText)}');
     } catch (e) {
       // Allow app to continue if remote config fails (fail open)
-      print('Remote Config init failed: $e');
+      debugPrint('Remote Config init failed: $e');
     }
   }
 
@@ -60,6 +63,8 @@ class RemoteConfigService {
   bool get areRegistrationsEnabled => _remoteConfig.getBool(_keyEnableRegistrations);
 
   int get notificationExpiryTime => _remoteConfig.getInt(_keyNotificationExpiryTime); // in hours 
+
+  int get techfestDay => _remoteConfig.getInt(_keyTechfestDay);
 
   // --- Update Logic ---
 
@@ -100,7 +105,7 @@ class RemoteConfigService {
         }
       }
     } catch (e) {
-      print('Error parsing version: $e');
+      debugPrint('Error parsing version: $e');
     }
     return false;
   }
