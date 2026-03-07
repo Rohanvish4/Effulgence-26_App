@@ -625,7 +625,7 @@ class _EventsListPageState extends State<EventsListPage> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          event.eventTime.toString().split(' ')[0],
+                          "TBA",
                           style: AppTextStyles.bodySmall,
                         ),
                         const Spacer(),

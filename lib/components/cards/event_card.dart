@@ -120,7 +120,7 @@ class EventCard extends StatelessWidget {
                             const SizedBox(height: AppSpacing.xs),
                             _buildInfoRow(
                               Icons.schedule,
-                              _formatDateTime(dateTime),
+                              'TBA',
                             ),
 
                             if (showRegisterButton) ...[
@@ -244,25 +244,4 @@ class EventCard extends StatelessWidget {
     );
   }
 
-  String _formatDateTime(DateTime dt) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    return '${dt.day} ${months[dt.month - 1]}, '
-        '${hour.toString().padLeft(2, '0')}:'
-        '${dt.minute.toString().padLeft(2, '0')} $period';
-  }
 }

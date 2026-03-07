@@ -79,28 +79,9 @@ class ContactUsPage extends StatelessWidget {
 
                     const SizedBox(height: AppSpacing.xxl),
                     
-                    // _buildTeamGrid(_teamMembers),
+                    _buildTeamGrid(_teamMembers),
 
                     const SizedBox(height: AppSpacing.xxl),
-                    // Join CTA
-                    // Container(
-                    //     padding: const EdgeInsets.symmetric(
-                    //         horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-                    //     decoration: BoxDecoration(
-                    //       color: Colors.black,
-                    //       borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                    //       border: Border.all(color: AppColors.primary.withValues(alpha:0.5)),
-                    //     ),
-                    //     child: Text(
-                    //       "Want to join the ranks? Contact specific coordinators.",
-                    //       style: AppTextStyles.labelMedium.copyWith(
-                    //         color: AppColors.primary,
-                    //         letterSpacing: 1.2,
-                    //       ),
-                    //       textAlign: TextAlign.center,
-                    //     ),
-                    //   ),
-                       const SizedBox(height: AppSpacing.xxl),
                   ],
                 ),
               ),

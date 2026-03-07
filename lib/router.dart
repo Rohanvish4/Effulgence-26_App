@@ -196,6 +196,14 @@ class AppRouter {
           return EventDetailsPage(eventId: eventId);
         },
       ),
+      GoRoute(
+        path: '/event/:id',
+        name: 'eventDetailsSingle',
+        builder: (context, state) {
+          final eventId = state.pathParameters['id']!;
+          return EventDetailsPage(eventId: eventId);
+        },
+      ),
 
       // My Events Page - Shows user's registered events
       GoRoute(

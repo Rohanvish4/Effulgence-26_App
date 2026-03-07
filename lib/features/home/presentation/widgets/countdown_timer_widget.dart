@@ -13,7 +13,7 @@ class CountdownTimerWidget extends StatefulWidget {
 class _CountdownTimerWidgetState extends State<CountdownTimerWidget> {
   late Timer _timer;
   Duration _timeLeft = Duration.zero;
-  final DateTime _targetDate = DateTime(2026, 3, 15);
+  final DateTime _targetDate = DateTime(2026, 4, 10);
 
   @override
   void initState() {

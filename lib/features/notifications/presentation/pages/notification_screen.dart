@@ -13,6 +13,7 @@ import '../cubit/notification_state.dart';
 import '../../domain/entities/notification_entity.dart';
 import 'package:go_router/go_router.dart';
 import 'package:badges/badges.dart' as badges;
+
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -35,27 +36,91 @@ class _NotificationScreenState extends State<NotificationScreen> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(context),
-        ),  
-        title: BlocBuilder<NotificationCubit, NotificationState>(
+      body: ParticleBackground(
+        floatingElements: EffulgenceBackgroundElements.minimal,
+        child: BlocBuilder<NotificationCubit, NotificationState>(
           builder: (context, state) {
             int unreadCount = 0;
+            List<NotificationEntity> allValidNotifications = [];
+
             if (state is NotificationLoaded) {
               final remoteConfig = context.read<RemoteConfigService>();
-              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
-              final validNotifications = state.notifications
-                  .where((n) => n.createdAt.isAfter(cutoffDate));
-              unreadCount = validNotifications.where((n) => !n.isRead).length;
+              final cutoffDate = DateTime.now().subtract(
+                Duration(hours: remoteConfig.notificationExpiryTime),
+              );
+              allValidNotifications = state.notifications
+                  .where((n) => n.createdAt.isAfter(cutoffDate))
+                  .toList();
+              unreadCount =
+                  allValidNotifications.where((n) => !n.isRead).length;
             }
 
-            return badges.Badge(
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: [
+                _buildSliverAppBar(unreadCount),
+                if (state is NotificationLoading)
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    ),
+                  )
+                else if (state is NotificationError)
+                  SliverFillRemaining(
+                    child: _buildErrorState(state.message),
+                  )
+                else if (state is NotificationLoaded)
+                  ..._buildLoadedContent(allValidNotifications),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSliverAppBar(int unreadCount) {
+    return SliverAppBar(
+      expandedHeight: 120.0,
+      floating: true,
+      pinned: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.3),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.1)),
+          ),
+          child: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 20),
+        ),
+        onPressed: () => context.pop(context),
+      ),
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: FlexibleSpaceBar(
+            centerTitle: true,
+            titlePadding: const EdgeInsets.only(bottom: 16),
+            title: badges.Badge(
               showBadge: unreadCount > 0,
+              badgeStyle: badges.BadgeStyle(
+                badgeColor: Colors.red,
+                elevation: 0,
+                padding: const EdgeInsets.all(5),
+                borderRadius: BorderRadius.circular(4),
+              ),
               badgeContent: Text(
                 unreadCount > 99 ? '99+' : unreadCount.toString(),
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               position: badges.BadgePosition.topEnd(top: -12, end: -15),
               child: Text(
@@ -66,149 +131,260 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            );
+            ),
+            background: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.bgPrimary.withValues(alpha: 0.8),
+                    AppColors.bgPrimary.withValues(alpha: 0.2),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: const Icon(Icons.done_all_rounded, color: AppColors.primary, size: 20),
+          ),
+          tooltip: 'Mark all as read',
+          onPressed: () {
+            context.read<NotificationCubit>().markAllNotificationsRead();
           },
         ),
-        centerTitle: true,
-        backgroundColor: AppColors.bgPrimary.withValues(alpha:0.8),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showReadHistory ? Icons.visibility_off : Icons.history,
-            ),
-            tooltip: _showReadHistory ? 'Hide history' : 'Show history',
-            onPressed: () {
-              setState(() {
-                _showReadHistory = !_showReadHistory;
-              });
-            },
-          ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
 
-          IconButton(
-            icon: const Icon(Icons.playlist_add_check_rounded),
-            tooltip: 'Mark all as read',
-            onPressed: () {
-              context.read<NotificationCubit>().markAllNotificationsRead();
-            },
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline,
+              color: AppColors.error.withValues(alpha: 0.8), size: 48),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () =>
+                context.read<NotificationCubit>().getNotifications(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
-      body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.minimal,
-        child: BlocBuilder<NotificationCubit, NotificationState>(
-          builder: (context, state) {
-            if (state is NotificationLoading) {
-              return const Center(
-                child: CircularProgressIndicator(color: AppColors.primary),
-              );
-            } else if (state is NotificationError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline,
-                        color: AppColors.error.withValues(alpha:0.8), size: 48),
-                    const SizedBox(height: 16),
-                    Text(
-                      state.message,
-                      style: AppTextStyles.bodyMedium
-                          .copyWith(color: AppColors.textSecondary),
-                      textAlign: TextAlign.center,
+    );
+  }
+
+  List<Widget> _buildLoadedContent(List<NotificationEntity> validNotifications) {
+    final notifications = _showReadHistory
+        ? validNotifications
+        : validNotifications.where((n) => !n.isRead).toList();
+
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: _buildFilterToggle(),
+        ),
+      ),
+      if (notifications.isEmpty)
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildEmptyState(),
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final notification = notifications[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _NotificationItem(notification: notification),
+                );
+              },
+              childCount: notifications.length,
+            ),
+          ),
+        ),
+    ];
+  }
+
+  Widget _buildFilterToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showReadHistory = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: !_showReadHistory
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: !_showReadHistory
+                      ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
+                      : Border.all(color: Colors.transparent),
+                ),
+                child: Center(
+                  child: Text(
+                    'Unread',
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: !_showReadHistory
+                          ? AppColors.primary
+                          : AppColors.textMuted,
+                      fontWeight: !_showReadHistory ? FontWeight.bold : FontWeight.normal,
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () =>
-                          context.read<NotificationCubit>().getNotifications(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black,
-                      ),
-                      child: const Text('Retry'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _showReadHistory = true),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: _showReadHistory
+                      ? AppColors.surface.withValues(alpha: 0.5)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: _showReadHistory
+                      ? Border.all(color: AppColors.border.withValues(alpha: 0.2))
+                      : Border.all(color: Colors.transparent),
+                ),
+                child: Center(
+                  child: Text(
+                    'History',
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: _showReadHistory
+                          ? AppColors.textPrimary
+                          : AppColors.textMuted,
+                      fontWeight: _showReadHistory ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withValues(alpha: 0.4),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.1)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      spreadRadius: -5,
                     ),
                   ],
                 ),
-              );
-            } else if (state is NotificationLoaded) {
-
-               final remoteConfig = context.read<RemoteConfigService>();
-              final cutoffDate = DateTime.now().subtract(Duration(hours: remoteConfig.notificationExpiryTime));
-              final validNotifications = state.notifications
-                  .where((n) => n.createdAt.isAfter(cutoffDate));
-
-              final notifications = _showReadHistory
-                  ? validNotifications.toList()
-                  : validNotifications.where((n) => !n.isRead).toList();
-
-              if (notifications.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withValues(alpha:0.3),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.primary.withValues(alpha:0.2)),
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_rounded,
-                          color: AppColors.textMuted.withValues(alpha:0.5),
-                          size: 64,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'ALL CAUGHT UP',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.textMuted,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No new notifications at the moment.',
-                        style: AppTextStyles.bodyMedium
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return RefreshIndicator(
-                onRefresh: () =>
-                    context.read<NotificationCubit>().getNotifications(),
-                color: AppColors.primary,
-                backgroundColor: AppColors.bgSecondary,
-                edgeOffset: 100,
-                child: ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                  itemCount: notifications.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final notification = notifications[index];
-                    return _NotificationItem(notification: notification);
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: child,
+                    );
                   },
+                  child: Icon(
+                    _showReadHistory ? Icons.inbox_rounded : Icons.notifications_active_outlined,
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                    size: 48,
+                  ),
                 ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Text(
+            _showReadHistory ? 'NO NOTIFICATIONS' : 'ALL CAUGHT UP',
+            style: AppTextStyles.labelLarge.copyWith(
+              color: AppColors.textPrimary,
+              letterSpacing: 3,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _showReadHistory
+                ? 'You have no notifications yet.'
+                : 'No new notifications at the moment.\nCheck history for older ones.',
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textMuted, height: 1.5),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
@@ -221,7 +397,6 @@ class _NotificationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final isUnread = !notification.isRead;
 
     return Dismissible(
@@ -229,12 +404,26 @@ class _NotificationItem extends StatelessWidget {
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha:0.2),
+          color: AppColors.primary.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
-        child: const Icon(Icons.check_circle_outline, color: AppColors.primary),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Mark as read',
+              style: AppTextStyles.labelMedium.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.check_circle_outline, color: AppColors.primary),
+          ],
+        ),
       ),
       onDismissed: (_) {
         context.read<NotificationCubit>().markNotificationRead(notification.id);
@@ -250,92 +439,109 @@ class _NotificationItem extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isUnread
-              ? AppColors.primary.withValues(alpha:0.05)
-              : AppColors.surface.withValues(alpha:0.3),
+          gradient: LinearGradient(
+            colors: isUnread
+                ? [
+                    AppColors.primary.withValues(alpha: 0.1),
+                    AppColors.primary.withValues(alpha: 0.02),
+                  ]
+                : [
+                    AppColors.surface.withValues(alpha: 0.4),
+                    AppColors.surface.withValues(alpha: 0.2),
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isUnread
-                ? AppColors.primary.withValues(alpha:0.3)
-                : AppColors.border.withValues(alpha:0.1),
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : AppColors.border.withValues(alpha: 0.08),
           ),
+          boxShadow: isUnread
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  // Mark as read if unread
-                  // if (isUnread) {
-                  //   context
-                  //       .read<NotificationCubit>()
-                  //       .markNotificationRead(notification.id);
-                  // }
-                  
-                  // Handle navigation based on type and relatedId
-                  if (notification.relatedId != null && 
+                  if (notification.relatedId != null &&
                       notification.relatedId!.isNotEmpty) {
-                    
                     final relatedId = notification.relatedId!;
-                    
+
                     switch (notification.type.toUpperCase()) {
                       case 'EVENT':
-                        // Mark as read if unread
                         if (isUnread) {
                           context
                               .read<NotificationCubit>()
                               .markNotificationRead(notification.id);
-                        } 
-                        context.pushNamed('eventDetails', pathParameters: {'id': relatedId});
+                        }
+                        context.pushNamed('eventDetails',
+                            pathParameters: {'id': relatedId});
                         break;
                       case 'TEAM_INVITE':
-                         if (isUnread) {
+                        if (isUnread) {
                           context
                               .read<NotificationCubit>()
                               .markNotificationRead(notification.id);
-                        } 
+                        }
                         context.pushNamed('myInvitations');
                         break;
                       case 'TEAM_REQUEST':
-                         if (isUnread) {
+                        if (isUnread) {
                           context
                               .read<NotificationCubit>()
                               .markNotificationRead(notification.id);
-                        } 
-                        context.pushNamed('teamManagement', pathParameters: {'eventId': relatedId});
+                        }
+                        context.pushNamed('teamManagement',
+                            pathParameters: {'eventId': relatedId});
                         break;
                       case 'TEAM_UPDATE':
-                         if (isUnread) {
+                        if (isUnread) {
                           context
                               .read<NotificationCubit>()
                               .markNotificationRead(notification.id);
-                        } 
-                        // Team update can go to event details or team management
-                        context.pushNamed('eventDetails', pathParameters: {'id': relatedId});
+                        }
+                        context.pushNamed('eventDetails',
+                            pathParameters: {'id': relatedId});
                         break;
                       case 'ADMIN':
                       case 'ALERT':
                       case 'REMINDER':
                       case 'SYSTEM':
-                        // No navigation for admin/system notifications
-                        break;
-                      default:
-                        // Unknown type or no specific navigation
-                        break;
-                    }
-                  } else {
-                     // If no relatedId but is team invite, still go to invitations
-                     if (notification.type.toUpperCase() == 'TEAM_INVITE') {
                         if (isUnread) {
                           context
                               .read<NotificationCubit>()
                               .markNotificationRead(notification.id);
-                        } 
-                        context.pushNamed('myInvitations');
-                     }
+                        }
+                        break;
+                      default:
+                        break;
+                    }
+                  } else {
+                    if (notification.type.toUpperCase() == 'TEAM_INVITE') {
+                      if (isUnread) {
+                        context
+                            .read<NotificationCubit>()
+                            .markNotificationRead(notification.id);
+                      }
+                      context.pushNamed('myInvitations');
+                    } else if (isUnread) {
+                      context
+                          .read<NotificationCubit>()
+                          .markNotificationRead(notification.id);
+                    }
                   }
                 },
                 child: Padding(
@@ -343,7 +549,7 @@ class _NotificationItem extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildIcon(notification.type),
+                      _buildIcon(notification.type, isUnread),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -351,6 +557,7 @@ class _NotificationItem extends StatelessWidget {
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Text(
@@ -360,18 +567,36 @@ class _NotificationItem extends StatelessWidget {
                                           ? AppColors.textPrimary
                                           : AppColors.textSecondary,
                                       fontWeight: isUnread
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      height: 1.2,
                                     ),
                                   ),
                                 ),
                                 if (isUnread)
                                   Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
+                                    margin: const EdgeInsets.only(left: 8, top: 4),
+                                    child: TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.5, end: 1.0),
+                                      duration: const Duration(milliseconds: 1000),
+                                      curve: Curves.easeInOutSine,
+                                      builder: (context, value, child) {
+                                        return Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary,
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.primary.withValues(alpha: 0.5 * value),
+                                                blurRadius: 4 * value,
+                                                spreadRadius: 1 * value,
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
                               ],
@@ -382,17 +607,27 @@ class _NotificationItem extends StatelessWidget {
                               style: AppTextStyles.bodyMedium.copyWith(
                                 color: isUnread
                                     ? AppColors.textSecondary
-                                    : AppColors.textMuted,
+                                    : AppColors.textMuted.withValues(alpha: 0.8),
                                 height: 1.4,
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              notification.createdAt.formattedDateTime,
-                              style: AppTextStyles.labelSmall.copyWith(
-                                color: AppColors.textMuted.withValues(alpha:0.6),
-                                fontSize: 10,
-                              ),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time_rounded,
+                                  size: 12,
+                                  color: AppColors.textMuted.withValues(alpha: 0.6),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  notification.createdAt.formattedDateTime,
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.textMuted.withValues(alpha: 0.6),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -408,7 +643,7 @@ class _NotificationItem extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon(String type) {
+  Widget _buildIcon(String type, bool isUnread) {
     IconData iconData;
     Color color;
 
@@ -431,12 +666,12 @@ class _NotificationItem extends StatelessWidget {
         break;
       case 'SYSTEM':
         iconData = Icons.settings_rounded;
-        color = const Color(0xFF2DD4BF); // Teal
+        color = AppColors.primary; // Primary Color
         break;
       case 'TEAM_INVITE':
       case 'TEAM_REQUEST':
       case 'TEAM_UPDATE':
-        iconData = Icons.people_outline_rounded;
+        iconData = Icons.people_alt_rounded;
         color = const Color(0xFFF39C12); // Amber
         break;
       default:
@@ -444,13 +679,21 @@ class _NotificationItem extends StatelessWidget {
         color = AppColors.textSecondary;
     }
 
+    if (!isUnread) {
+      color = color.withValues(alpha: 0.5);
+    }
+
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:0.1),
+        color: color.withValues(alpha: isUnread ? 0.15 : 0.05),
         shape: BoxShape.circle,
+        border: Border.all(
+          color: color.withValues(alpha: isUnread ? 0.3 : 0.1),
+          width: 1,
+        ),
       ),
-      child: Icon(iconData, color: color, size: 20),
+      child: Icon(iconData, color: color, size: 22),
     );
   }
 }

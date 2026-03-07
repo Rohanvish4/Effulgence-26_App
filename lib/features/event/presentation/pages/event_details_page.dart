@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:ui'; // For BackdropFilter
 
 import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
@@ -13,7 +14,7 @@ import '../../../../components/components.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/extensions.dart';
+
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 import '../widgets/public_teams_bottom_sheet.dart';
@@ -21,6 +22,7 @@ import '../widgets/team_creation_dialog.dart';
 import 'team_management_page.dart';
 import 'my_invitations_page.dart';
 import '../../../../core/presentation/pages/pdf_viewer_page.dart';
+import 'package:go_router/go_router.dart';
 
 class EventDetailsPage extends StatefulWidget {
   final String eventId;
@@ -138,12 +140,39 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
               color: Colors.white.withOpacity(0.1),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/');
+                  }
+                },
               ),
             ),
           ),
         ),
       ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ClipOval(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                color: Colors.white.withOpacity(0.1),
+                child: IconButton(
+                  icon: const Icon(Icons.share_rounded, size: 20, color: Colors.white),
+                  onPressed: () {
+                    Share.share(
+                      'Check out ${event.title} at Effulgence\'26!\nRegister now: https://www.effulgence26.in/event/${event.id}',
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
         background: Stack(
@@ -287,13 +316,13 @@ if (event.description != null && event.description!.isNotEmpty) ...[
       children: [
         Row(
           children: [
-            Expanded(child: _buildGlassInfoCard(Icons.calendar_month_rounded, 'Date', event.eventTime.formattedDateTime, AppColors.electricBlue)),
+            Expanded(child: _buildGlassInfoCard(Icons.calendar_month_rounded, 'Date', 'TBA', AppColors.electricBlue)),
             const SizedBox(width: AppSpacing.md),
             Expanded(child: _buildGlassInfoCard(Icons.location_on_rounded, 'Venue', event.venue, AppColors.crimsonRed)),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
-        _buildGlassInfoCard(Icons.alarm_on_rounded, 'Registration Deadline', event.registrationDeadline.formattedDateTime, AppColors.secondary, isFullWidth: true),
+        _buildGlassInfoCard(Icons.alarm_on_rounded, 'Registration Deadline', 'TBA', AppColors.secondary, isFullWidth: true),
         if (event.isTeam) ...[
           const SizedBox(height: AppSpacing.md),
           _buildGlassInfoCard(Icons.diversity_3_rounded, 'Squad Size', '${event.minTeamSize} to ${event.maxTeamSize} Members', AppColors.royalPurple, isFullWidth: true),

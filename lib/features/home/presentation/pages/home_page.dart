@@ -87,6 +87,8 @@ class _HomePageState extends State<HomePage>
 // Auth check removed to prevent state flicker (handled in AppProviders)
       // Load events on home tab (will be filtered in UI)
       context.read<EventsCubit>().loadEvents(refresh: true);
+      // Fetch notifications to update badge immediately
+      context.read<NotificationCubit>().getNotifications();
     });
   }
 
@@ -97,7 +99,8 @@ class _HomePageState extends State<HomePage>
     return Scaffold(
       body: ParticleBackground(
         floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
-        child: CustomScrollView(
+        child:
+         CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
             _buildAppBar(),
@@ -442,12 +445,12 @@ class _HomePageState extends State<HomePage>
               CachedNetworkImage(
                         imageUrl: event.coverImage!,
                         fit: BoxFit.cover,
-                        // Memory cache configuration
-                        memCacheHeight: 300,
-                        memCacheWidth: 600,
-                        // Aggressive caching
-                        maxHeightDiskCache: 400,
-                        maxWidthDiskCache: 800,
+                        // // Memory cache configuration
+                        // memCacheHeight: 300,
+                        // memCacheWidth: 600,
+                        // // Aggressive caching
+                        // maxHeightDiskCache: 400,
+                        // maxWidthDiskCache: 800,
                         placeholder: (context, url) => Container(
                           color: AppColors.bgSecondary.withValues(alpha: 0.5),
                           child: Center(

@@ -244,7 +244,7 @@ class IdCardWidget extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildDataField("VALID_UNTIL", "08 FEB 2026"),
+              _buildDataField("VALID_UNTIL", "13 APR 2026"),
               _buildDataField("SECTOR", "ALL_ACCESS"),
             ],
           ),

@@ -279,7 +279,7 @@ class PdfGeneratorService {
                               children: [
                                 _buildDataField(
                                   "VALID_UNTIL",
-                                  "18 March 2026",
+                                  "13 April 2026",
                                   labelColor: textMuted,
                                   valueColor: primary,
                                 ),
