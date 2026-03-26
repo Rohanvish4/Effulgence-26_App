@@ -585,7 +585,7 @@ class _HomePageState extends State<HomePage>
                           ),
                           TextSpan(
                             text:
-                                "${userName[0].toUpperCase() + userName.substring(1)}",
+                                userName[0].toUpperCase() + userName.substring(1),
                             style: AppTextStyles.headlineMedium.copyWith(
                               color: AppColors.primary,
                               fontWeight: FontWeight.bold,

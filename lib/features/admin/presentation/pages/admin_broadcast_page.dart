@@ -274,7 +274,7 @@ class _AdminBroadcastPageState extends State<AdminBroadcastPage> {
 
                   // Notification Type Dropdown
                   DropdownButtonFormField<String>(
-                    value: _selectedType,
+                    initialValue: _selectedType,
                     dropdownColor: AppColors.surface,
                     style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(

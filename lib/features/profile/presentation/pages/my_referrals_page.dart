@@ -101,7 +101,7 @@ class _MyReferralsPageState extends State<MyReferralsPage> {
                   const SizedBox(height: AppSpacing.md),
                   ...referrals
                       .map((r) => _buildReferralTile(r))
-                      .toList(),
+                      ,
                 ],
               ),
             );

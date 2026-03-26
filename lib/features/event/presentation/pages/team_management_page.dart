@@ -8,6 +8,7 @@ import '../../domain/entities/participation_entity.dart';
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import 'package:share_plus/share_plus.dart';
 
 class TeamManagementPage extends StatefulWidget {
   final String eventId;
@@ -184,9 +185,22 @@ class _TeamManagementPageState extends State<TeamManagementPage> {
                 ),
               ),
               if (isLeader)
-                IconButton(
-                  icon: const Icon(Icons.edit, color: AppColors.primary),
-                  onPressed: () => _showEditTeamDialog(context, team),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.share, color: AppColors.primary),
+                      onPressed: () {
+                        final String shareText =
+                            "Join my team ${team.teamName ?? "for Effulgence '26"}!\nhttps://www.effulgence26.in/join-team/${team.eventId}/${team.id}";
+                        Share.share(shareText);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: AppColors.primary),
+                      onPressed: () => _showEditTeamDialog(context, team),
+                    ),
+                  ],
                 ),
             ],
           ),

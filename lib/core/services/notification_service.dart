@@ -357,7 +357,7 @@ class NotificationService {
             styleInformation: BigTextStyleInformation(
               body,
               contentTitle: '<b>$title</b>',
-              summaryText: '$type',
+              summaryText: type,
               htmlFormatContentTitle: true,
               htmlFormatSummaryText: true,
             ),

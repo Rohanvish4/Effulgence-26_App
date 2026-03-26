@@ -26,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isGoogleLogin = false;
 
   @override
   void dispose() {
@@ -36,6 +37,9 @@ class _LoginPageState extends State<LoginPage> {
 
   void _onLogin() {
     if (_formKey.currentState?.validate() ?? false) {
+      setState(() {
+        _isGoogleLogin = false;
+      });
       context.read<AuthCubit>().login(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -214,7 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                             // Login Button
                             GradientButton(
                               text: 'LOGIN',
-                              isLoading: state is AuthLoading,
+                              isLoading: state is AuthLoading && !_isGoogleLogin,
                               onPressed: _onLogin,
                             ),
 
@@ -239,9 +243,12 @@ class _LoginPageState extends State<LoginPage> {
                             // Google Sign In Button
                             GoogleButton(
                               onPressed: () {
+                                setState(() {
+                                  _isGoogleLogin = true;
+                                });
                                 context.read<AuthCubit>().googleLogin();
                               },
-                              isLoading: state is AuthLoading,
+                              isLoading: state is AuthLoading && _isGoogleLogin,
                             ),
                           ],
                         ),

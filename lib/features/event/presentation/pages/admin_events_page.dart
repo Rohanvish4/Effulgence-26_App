@@ -26,7 +26,7 @@ class AdminEventsPage extends StatefulWidget {
 }
 
 class _AdminEventsPageState extends State<AdminEventsPage> {
-  bool _showDeletedEvents = false;
+  final bool _showDeletedEvents = false;
   final TextEditingController _searchController =
       TextEditingController(); // Search controller
   String _searchQuery = ''; // Search query state

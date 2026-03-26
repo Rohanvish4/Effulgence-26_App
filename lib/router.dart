@@ -18,6 +18,7 @@ import 'features/event/presentation/pages/event_details_page.dart';
 import 'features/event/presentation/pages/my_events_page.dart';
 import 'features/event/presentation/pages/my_invitations_page.dart';
 import 'features/event/presentation/pages/team_management_page.dart';
+import 'features/event/presentation/pages/join_team_page.dart';
 import 'features/sponsors/presentation/pages/sponsors_list_page.dart';
 import 'features/sponsors/presentation/pages/sponsor_booth_page.dart';
 import 'features/sponsors/presentation/cubit/sponsors_cubit.dart';
@@ -314,6 +315,17 @@ class AppRouter {
         builder: (context, state) {
           final eventId = state.pathParameters['eventId']!;
           return TeamManagementPage(eventId: eventId);
+        },
+      ),
+
+      // Join Team Route
+      GoRoute(
+        path: '/join-team/:eventId/:teamId',
+        name: 'joinTeam',
+        builder: (context, state) {
+          final eventId = state.pathParameters['eventId']!;
+          final teamId = state.pathParameters['teamId']!;
+          return JoinTeamPage(eventId: eventId, teamId: teamId);
         },
       ),
 

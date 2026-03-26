@@ -57,28 +57,28 @@ class _AdminEventRegistrationsPageState
         ..value = 'Event Name'
         ..cellStyle = _getHeaderStyle();
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-        ..value = widget.event.title;
+        .value = widget.event.title;
       rowIndex++;
 
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
         ..value = 'Event Type'
         ..cellStyle = _getHeaderStyle();
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-        ..value = isTeamEvent ? 'Team Event' : 'Individual Event';
+        .value = isTeamEvent ? 'Team Event' : 'Individual Event';
       rowIndex++;
 
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
         ..value = 'Total Registrations'
         ..cellStyle = _getHeaderStyle();
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-        ..value = data.length;
+        .value = data.length;
       rowIndex++;
 
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
         ..value = 'Present'
         ..cellStyle = _getHeaderStyle();
       sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-        ..value = data.where((p) => p.isPresent).length;
+        .value = data.where((p) => p.isPresent).length;
       rowIndex += 2;
 
       // Add Registrations Header
@@ -193,11 +193,11 @@ class _AdminEventRegistrationsPageState
     ParticipationEntity participation,
   ) {
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-      ..value = participation.teamName ?? 'Unnamed Team';
+      .value = participation.teamName ?? 'Unnamed Team';
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-      ..value = participation.teamMembers.length;
+      .value = participation.teamMembers.length;
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-      ..value = participation.isPresent ? 'Yes' : 'No';
+      .value = participation.isPresent ? 'Yes' : 'No';
   }
 
   void _addTeamMemberRow(
@@ -207,11 +207,11 @@ class _AdminEventRegistrationsPageState
     bool isPresent,
   ) {
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-      ..value = member.name ?? '';
+      .value = member.name ?? '';
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-      ..value = member.email ?? '';
+      .value = member.email ?? '';
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex))
-      ..value = isPresent ? 'Yes' : 'No';
+      .value = isPresent ? 'Yes' : 'No';
   }
 
   void _addIndividualRow(
@@ -220,13 +220,13 @@ class _AdminEventRegistrationsPageState
     ParticipationEntity participation,
   ) {
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex))
-      ..value = participation.userName;
+      .value = participation.userName;
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex))
-      ..value = participation.userEmail;
+      .value = participation.userEmail;
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex))
-      ..value = participation.isPresent ? 'Yes' : 'No';
+      .value = participation.isPresent ? 'Yes' : 'No';
     sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex))
-      ..value = DateTime.now().toString();
+      .value = DateTime.now().toString();
   }
 
   CellStyle _getHeaderStyle() {
@@ -277,8 +277,9 @@ class _AdminEventRegistrationsPageState
       ),
       body: BlocBuilder<EventsCubit, EventsState>(
         builder: (context, state) {
-          if (state.isOperationLoading)
+          if (state.isOperationLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final registrations = state.myParticipations;
           if (registrations.isEmpty) {

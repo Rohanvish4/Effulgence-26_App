@@ -230,10 +230,8 @@ class _MiniIconButton extends StatelessWidget {
   final Color? color;
 
   const _MiniIconButton({
-    super.key,
     required this.icon,
-    required this.onTap,
-    this.color,
+    required this.onTap, this.color,
   });
 
   @override
