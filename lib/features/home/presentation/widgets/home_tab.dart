@@ -1,4 +1,6 @@
 import 'dart:ui';
+import 'dart:ui' as ui;
+import 'package:effulgence26_mobile_app/features/event/presentation/pages/event_timeline_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -102,11 +104,16 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
   }
 
   void goToProfileTab() {
-    if (_currentIndex == 3 || !_pageController.hasClients) return;
+    final authState = context.read<AuthCubit>().state;
+    final isAdmin = authState is AuthAuthenticated && authState.user.isAdmin;
+    final showTimeline = context.read<RemoteConfigService>().isEventScheduleVisible;
+    final profileIndex = _profileTabIndex(isAdmin: isAdmin, showTimeline: showTimeline);
+
+    if (_currentIndex == profileIndex || !_pageController.hasClients) return;
 
     HapticFeedback.lightImpact();
     _pageController.animateToPage(
-      3,
+      profileIndex,
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeOutCubic,
     );
@@ -209,93 +216,126 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget _buildMainContent() {
-    return BlocBuilder<AuthCubit, AuthState>(
-      builder: (context, state) {
-        final isAdmin = state is AuthAuthenticated && state.user.isAdmin;
+ Widget _buildMainContent() {
+  return BlocBuilder<AuthCubit, AuthState>(
+    builder: (context, state) {
+      final isAdmin = state is AuthAuthenticated && state.user.isAdmin;
+      final showTimeline =
+          context.read<RemoteConfigService>().isEventScheduleVisible;
+        final profileIndex = _profileTabIndex(isAdmin: isAdmin, showTimeline: showTimeline);
+        final adminIndex = _adminTabIndex(showTimeline: showTimeline);
+        final timelineIndex = _timelineTabIndex();
+      final List<Widget> pages = [
+        const HomePage(),
+        const EventsListPage(),
+        const SponsorsListPage(),
+        if (showTimeline) const EventTimelinePage(),
+        if (isAdmin) const AdminEventsPage(),
+        const UserProfilePage(),
+      ];
 
-        final List<Widget> pages = [
-          const HomePage(),
-          const EventsListPage(),
-          const SponsorsListPage(),
-          const UserProfilePage(),
-          if (isAdmin) const AdminEventsPage(),
-        ];
+      if (_currentIndex >= pages.length && _pageController.hasClients) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final fallbackIndex = pages.length - 1;
+          _pageController.jumpToPage(fallbackIndex);
+          setState(() => _currentIndex = fallbackIndex);
+        });
+      }
 
-        return Scaffold(
-          extendBody: false,
-          body: PageView(
-            controller: _pageController,
-            physics: const BouncingScrollPhysics(),
-            children: pages,
-          ),
-          bottomNavigationBar: _buildFloatingNavBar(isAdmin),
-        );
-      },
-    );
+      return Scaffold(
+        extendBody: true,              // ← Critical
+        backgroundColor: Colors.transparent, // ← Don't let scaffold paint bg
+        body: PageView(
+          controller: _pageController,
+          physics: const BouncingScrollPhysics(),
+          children: pages,
+        ),
+        bottomNavigationBar: _buildFloatingNavBar(
+          isAdmin: isAdmin,
+          showTimeline: showTimeline,
+          profileIndex: profileIndex,
+          timelineIndex: timelineIndex,
+          adminIndex: adminIndex,
+        ),
+      );
+    },
+  );
+}
+
+ int _timelineTabIndex() => 3;
+
+ int _adminTabIndex({required bool showTimeline}) => showTimeline ? 4 : 3;
+
+ int _profileTabIndex({required bool isAdmin, required bool showTimeline}) {
+  if (showTimeline) {
+    return isAdmin ? 5 : 4;
   }
+  return isAdmin ? 4 : 3;
+ }
 
-  Widget _buildFloatingNavBar(bool isAdmin) {
-    return Container(
-      height: 78,
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
+ Widget _buildFloatingNavBar({
+  required bool isAdmin,
+  required bool showTimeline,
+  required int profileIndex,
+  required int timelineIndex,
+  required int adminIndex,
+ }) {
+  return Container(
+    height: 78,
+    margin: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [
-                AppColors.bgOverlay,
-                AppColors.surface,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
+            // ← Key: semi-transparent so particles/bg show through
+            color: AppColors.bgPrimary.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(26),
             border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.18),
+              color: AppColors.primary.withValues(alpha: 0.22),
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.42),
-                blurRadius: 26,
-                offset: const Offset(0, 12),
-              ),
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                blurRadius: 14,
-                offset: const Offset(0, -2),
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                0,
-                Icons.home_rounded,
-                'Home',
-                assetPath: 'assets/icons/home.png',
-                selectedAssetPath: 'assets/icons/home_selected.png',
-              ),
-              _buildNavItem(1, Icons.bolt_rounded,assetPath: 'assets/icons/calendar.png', selectedAssetPath: 'assets/icons/calendar_selected.png', 'Events'),
+              _buildNavItem(0, Icons.home_rounded, 'Home',
+                  assetPath: 'assets/icons/home.png',
+                  selectedAssetPath: 'assets/icons/home_selected.png'),
+              _buildNavItem(1, Icons.bolt_rounded, 'Events',
+                  assetPath: 'assets/icons/calendar.png',
+                  selectedAssetPath: 'assets/icons/calendar_selected.png'),
               _buildNavItem(2, Icons.handshake_rounded, 'Partners'),
-              _buildNavItem(
-                3,
-                Icons.person_rounded,
-                'Profile',
-                assetPath: 'assets/icons/profile.png',
-                selectedAssetPath: 'assets/icons/profile_selected.png',
-              ),
+              if (showTimeline)
+                _buildNavItem(
+                  timelineIndex,
+                  Icons.timeline_rounded,
+                  'Timeline',
+                ),
               if (isAdmin)
-                _buildNavItem(4, Icons.admin_panel_settings_rounded,assetPath: 'assets/icons/admin.png', selectedAssetPath: 'assets/icons/admin_selected.png',   'Admin'),
+                _buildNavItem(adminIndex, Icons.admin_panel_settings_rounded, 'Admin panel',
+                    assetPath: 'assets/icons/admin.png',
+                    selectedAssetPath: 'assets/icons/admin_selected.png'),
+              _buildNavItem(profileIndex, Icons.person_rounded, 'Profile',
+                  assetPath: 'assets/icons/profile.png',
+                  selectedAssetPath: 'assets/icons/profile_selected.png'),
+               
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem(
     int index,

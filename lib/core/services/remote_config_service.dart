@@ -17,6 +17,7 @@ class RemoteConfigService {
   static const String _keyEnableRegistrations = 'enable_registrations';
   static const String _keyNotificationExpiryTime = 'notification_expiry_time';
   static const String _keyTechfestDay = 'techfest_day';
+  static const String _keyShowEventSchedule = 'show_event_schedule';
     static const String _keyAccommodationReminderVisible =
       'accommodation_reminder_visible';
     static const String _keyAccommodationPaymentDeadline =
@@ -42,6 +43,7 @@ class RemoteConfigService {
         _keyEnableRegistrations: true,
         _keyNotificationExpiryTime: 24,
         _keyTechfestDay: 1,
+        _keyShowEventSchedule: true,
         _keyAccommodationReminderVisible: true,
         _keyAccommodationPaymentDeadline: '2026-04-06',
       });
@@ -71,6 +73,9 @@ class RemoteConfigService {
   int get notificationExpiryTime => _remoteConfig.getInt(_keyNotificationExpiryTime); // in hours 
 
   int get techfestDay => _remoteConfig.getInt(_keyTechfestDay);
+
+    bool get isEventScheduleVisible =>
+      _remoteConfig.getBool(_keyShowEventSchedule);
 
   bool get isAccommodationReminderVisible =>
       _remoteConfig.getBool(_keyAccommodationReminderVisible);

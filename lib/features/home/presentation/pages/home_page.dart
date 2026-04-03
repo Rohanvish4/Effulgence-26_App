@@ -716,6 +716,7 @@ class _HomePageState extends State<HomePage>
         "desc":
             "Leads robotics, automation, embedded systems, and hardware innovation."
       },
+  
       {
         "title": "PTSC",
         "desc":
@@ -724,6 +725,11 @@ class _HomePageState extends State<HomePage>
       {
         "title": "IISF",
         "desc": "Startup ecosystem enabling founders to transform ideas."
+      },
+          {
+        "title": "IEI",
+        "desc":
+            "The Institution of Engineers (India) chapter supporting technical learning and engineering excellence."
       },
       {
         "title": "MEF",

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart'; // Import GoRouter
 import 'package:url_launcher/url_launcher.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
+import 'package:effulgence26_mobile_app/features/auth/presentation/widgets/auth_support_section.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../../../../core/theme/app_spacing.dart';
@@ -146,10 +147,54 @@ class SidebarMenu extends StatelessWidget {
 
                 const Spacer(),
 
+                 Row(
+                   children: [
+                    SizedBox(width: 50),
+                     InkWell(
+                        onTap: () => AuthSupportSection.showSupportDialog(context),
+                        borderRadius: BorderRadius.circular(30),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.support_agent_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Need help',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                   ]
+                 ),
+
+                 SizedBox(height: AppSpacing.lg),
+                 
+
                 // Social Links
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                  
                     _SocialIcon(
                       icon: FontAwesomeIcons.instagram,
                       url: 'https://instagram.com/effulgence_knit',

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../components/components.dart';
 
@@ -420,6 +421,8 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                   style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 trailing: _buildStatusBadge(event),
               ),
@@ -433,8 +436,15 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                       color: AppColors.primary,
                     ),
                     const SizedBox(width: 4),
-                    Text(event.venue, style: AppTextStyles.bodySmall),
-                    const Spacer(),
+                    Expanded(
+                      child: Text(
+                        event.venue,
+                        style: AppTextStyles.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Icon(
                       Icons.calendar_month_rounded,
                       size: 14,
@@ -442,7 +452,7 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _formatDate(event.eventTime),
+                      _formatDateTime(event.eventTime),
                       style: AppTextStyles.bodySmall,
                     ),
                   ],
@@ -509,7 +519,9 @@ class _AdminEventsPageState extends State<AdminEventsPage> {
     );
   }
 
-  String _formatDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
+  String _formatDateTime(DateTime date) {
+    return DateFormat('dd MMM yyyy, hh:mm a').format(date.toLocal());
+  }
 
   void _showViewRegistrationsDialog(dynamic event) {
     if (event is! EventEntity) return;

@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/validators.dart';
+import '../widgets/auth_support_section.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -271,6 +272,10 @@ class _RegisterPageState extends State<RegisterPage>
                           ),
 
                         const SizedBox(height: AppSpacing.md),
+
+                        const AuthSupportSection(),
+
+                        const SizedBox(height: AppSpacing.sm),
                       ],
                     ),
                   ),

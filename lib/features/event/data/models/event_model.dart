@@ -27,6 +27,19 @@ class EventModel extends EventEntity {
 
   /// Create from JSON
   factory EventModel.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value, {DateTime? fallback}) {
+      if (value == null) return fallback ?? DateTime.now();
+      if (value is DateTime) return value.toLocal();
+      return DateTime.tryParse(value.toString())?.toLocal() ??
+          (fallback ?? DateTime.now());
+    }
+
+    DateTime? parseOptionalDate(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value.toLocal();
+      return DateTime.tryParse(value.toString())?.toLocal();
+    }
+
     return EventModel(
       id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
@@ -43,15 +56,9 @@ class EventModel extends EventEntity {
             )
           : null,
       eventVenue: json['eventVenue'] ?? '',
-      eventTime: json['eventTime'] != null
-          ? DateTime.parse(json['eventTime'])
-          : DateTime.now(),
-      endTime: json['endTime'] != null
-          ? DateTime.parse(json['endTime'])
-          : null,
-      registrationDeadline: json['registrationDeadline'] != null
-          ? DateTime.parse(json['registrationDeadline'])
-          : DateTime.now(),
+        eventTime: parseDate(json['eventTime']),
+        endTime: parseOptionalDate(json['endTime']),
+        registrationDeadline: parseDate(json['registrationDeadline']),
       status: json['status'] ?? 'UPCOMING',
       isDeleted: json['isDeleted'] ?? false,
       whatsappGroupLink: json['whatsappGroupLink'],
@@ -65,12 +72,8 @@ class EventModel extends EventEntity {
                   ))
               .toList()
           : null,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'])
-          : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.tryParse(json['updatedAt'])
-          : null,
+        createdAt: parseOptionalDate(json['createdAt']),
+        updatedAt: parseOptionalDate(json['updatedAt']),
     );
   }
 

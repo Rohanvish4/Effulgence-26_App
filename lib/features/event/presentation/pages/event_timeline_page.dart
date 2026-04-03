@@ -4,9 +4,10 @@ import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_text_styles.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/cubit/events_cubit.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/cubit/events_state.dart';
+import 'package:effulgence26_mobile_app/features/event/domain/entities/event_entity.dart';
+import 'package:effulgence26_mobile_app/core/utils/extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:effulgence26_mobile_app/components/components.dart';
 
 class EventTimelinePage extends StatefulWidget {
@@ -65,7 +66,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       itemCount: events.length,
                       itemBuilder: (context, index) {
-                        final event = events[index];
+                        final EventEntity event = events[index];
                         final isLast = index == events.length - 1;
                         return _buildTimelineItem(event, isLast, index);
                       },
@@ -136,10 +137,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
     );
   }
 
-  Widget _buildTimelineItem(dynamic event, bool isLast, int index) {
-    final dateFormat = DateFormat('MMM dd');
-    final timeFormat = DateFormat('hh:mm a');
-
+  Widget _buildTimelineItem(EventEntity event, bool isLast, int index) {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +149,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  dateFormat.format(event.eventTime).toUpperCase(),
+                  event.eventTime.formattedDate.toUpperCase(),
                   style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.textMuted,
                     fontSize: 10,
@@ -159,7 +157,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                   ),
                 ),
                 Text(
-                  timeFormat.format(event.eventTime),
+                  event.eventTime.formattedTime,
                   style: AppTextStyles.labelMedium.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w700,
@@ -252,10 +250,11 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
                               children: [
                                 _buildTag(event.eventType, AppColors.secondary),
-                                const SizedBox(width: 8),
                                 _buildTag(event.domain, AppColors.accent),
                               ],
                             ),
@@ -288,6 +287,29 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                                 ),
                               ],
                             ),
+                            if (event.endTime != null) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.flag_circle_rounded,
+                                    size: 14,
+                                    color: AppColors.textMuted,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Ends ${event.endTime!.formattedDateTime}',
+                                      style: AppTextStyles.bodySmall.copyWith(
+                                        color: AppColors.textMuted,
+                                      ),
+                                      maxLines: 2,
+                                      softWrap: true,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -312,12 +334,17 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
           color: color.withValues(alpha: 0.3),
         ),
       ),
-      child: Text(
-        text.toUpperCase(),
-        style: AppTextStyles.labelSmall.copyWith(
-          color: color,
-          fontSize: 8,
-          fontWeight: FontWeight.bold,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 140),
+        child: Text(
+          text.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.labelSmall.copyWith(
+            color: color,
+            fontSize: 8,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

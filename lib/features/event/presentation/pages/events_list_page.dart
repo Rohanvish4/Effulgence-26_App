@@ -13,6 +13,7 @@ import '../../../../core/animations/app_animations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../domain/entities/event_entity.dart';
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
@@ -479,6 +480,9 @@ class _EventsListPageState extends State<EventsListPage> {
     bool isRegistered,
     bool isRegistering,
   ) {
+    final shouldShowEventSchedule =
+        context.read<RemoteConfigService>().isEventScheduleVisible;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: 0.6),
@@ -618,15 +622,35 @@ class _EventsListPageState extends State<EventsListPage> {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        Icon(
-                          Icons.calendar_today,
-                          size: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "TBA",
-                          style: AppTextStyles.bodySmall,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                shouldShowEventSchedule
+                                    ? Icons.access_time_filled_rounded
+                                    : Icons.alarm_on_rounded,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                shouldShowEventSchedule
+                                    ? event.eventTime.formattedDateTime
+                                    : 'TBA',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const Spacer(),
                         if (isRegistered)
@@ -726,6 +750,18 @@ class _EventsListPageState extends State<EventsListPage> {
                           ),
                       ],
                     ),
+                    // if (!shouldShowEventSchedule) ...[
+                    //   const SizedBox(height: AppSpacing.xs),
+                    //   Text(
+                    //     'Registration Ends: ${event.registrationDeadline.formattedDateTime}',
+                    //     style: AppTextStyles.bodySmall.copyWith(
+                    //       color: AppColors.textSecondary,
+                    //       fontWeight: FontWeight.w600,
+                    //     ),
+                    //     maxLines: 2,
+                    //     overflow: TextOverflow.ellipsis,
+                    //   ),
+                    // ],
                   ],
                 ),
               ),

@@ -119,10 +119,14 @@ class _AdminEventRegistrationsPageState
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Exported to $fileName'),
+          content: const Text('Excel exported successfully'),
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+          showCloseIcon: true,
+          actionOverflowThreshold: 0.25,
           action: SnackBarAction(
-            label: 'View',
+            label: 'OPEN',
+            textColor: Colors.white,
             onPressed: () => _openExcelFile(filePath),
           ),
           backgroundColor: AppColors.success,

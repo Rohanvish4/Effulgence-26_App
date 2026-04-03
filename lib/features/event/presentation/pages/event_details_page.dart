@@ -8,12 +8,14 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:ui'; // For BackdropFilter
 
 import 'package:effulgence26_mobile_app/core/utils/url_utils.dart';
+import 'package:effulgence26_mobile_app/core/utils/extensions.dart';
 import 'package:html_unescape/html_unescape_small.dart';
 import '../../../../components/components.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/services/remote_config_service.dart';
 
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
@@ -312,34 +314,118 @@ if (event.description != null && event.description!.isNotEmpty) ...[
   }
 
   Widget _buildInfoGrid(EventEntity event) {
+    final shouldShowEventSchedule =
+        context.read<RemoteConfigService>().isEventScheduleVisible;
+    final startValue = event.eventTime.formattedDateTime;
+    final endDateTime = event.endTime ?? event.eventTime;
+    final endValue = endDateTime.formattedDateTime;
+
+    if (!shouldShowEventSchedule) {
+      return Column(
+        children: [
+          _buildGlassInfoCard(
+            Icons.access_time_filled_rounded,
+            'Event Schedule',
+            'TBA',
+            AppColors.primary,
+            isFullWidth: true,
+            emphasizeValue: true,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildGlassInfoCard(
+            Icons.alarm_on_rounded,
+            'Registration Ends',
+            event.registrationDeadline.formattedDateTime,
+            AppColors.warning,
+            isFullWidth: true,
+          ),
+        ],
+      );
+    }
+
     return Column(
       children: [
-        Row(
-          children: [
-            Expanded(child: _buildGlassInfoCard(Icons.calendar_month_rounded, 'Date', 'TBA', AppColors.electricBlue)),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _buildGlassInfoCard(Icons.location_on_rounded, 'Venue', event.venue, AppColors.crimsonRed)),
-          ],
+        // Row(
+        //   children: [
+        //     Expanded(
+        //       child: _buildGlassInfoCard(
+        //         Icons.calendar_today_rounded,
+        //         'Start Date',
+        //         event.eventTime.formattedDate,
+        //         AppColors.electricBlue,
+        //       ),
+        //     ),
+        //     const SizedBox(width: AppSpacing.md),
+        //     Expanded(
+        //       child: _buildGlassInfoCard(
+        //         Icons.event_available_rounded,
+        //         'End Date',
+        //         (event.endTime ?? event.eventTime).formattedDate,
+        //         AppColors.secondary,
+        //       ),
+        //     ),
+        //   ],
+        // ),
+        // const SizedBox(height: AppSpacing.md),
+        _buildGlassInfoCard(
+          Icons.access_time_filled_rounded,
+          'Event Schedule',
+          '$startValue  ➔  $endValue',
+          AppColors.primary,
+          isFullWidth: true,
+          emphasizeValue: true,
         ),
         const SizedBox(height: AppSpacing.md),
-        _buildGlassInfoCard(Icons.alarm_on_rounded, 'Registration Deadline', 'TBA', AppColors.secondary, isFullWidth: true),
+        _buildGlassInfoCard(
+          Icons.location_on_rounded,
+          'Venue',
+          event.venue,
+          AppColors.crimsonRed,
+          isFullWidth: true,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildGlassInfoCard(
+          Icons.alarm_on_rounded,
+          'Registration Ends',
+          event.registrationDeadline.formattedDateTime,
+          AppColors.warning,
+          isFullWidth: true,
+        ),
         if (event.isTeam) ...[
           const SizedBox(height: AppSpacing.md),
-          _buildGlassInfoCard(Icons.diversity_3_rounded, 'Squad Size', '${event.minTeamSize} to ${event.maxTeamSize} Members', AppColors.royalPurple, isFullWidth: true),
+          _buildGlassInfoCard(
+            Icons.groups_2_rounded,
+            'Team Requirements',
+            '${event.minTeamSize} to ${event.maxTeamSize} Members per Squad',
+            AppColors.royalPurple,
+            isFullWidth: true,
+          ),
         ],
       ],
     );
   }
 
-  Widget _buildGlassInfoCard(IconData icon, String title, String value, Color color, {bool isFullWidth = false}) {
+  Widget _buildGlassInfoCard(
+    IconData icon,
+    String title,
+    String value,
+    Color color, {
+    bool isFullWidth = false,
+    bool emphasizeValue = false,
+    int maxLines = 2,
+  }) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary.withValues(alpha: 0.5),
+        color: AppColors.bgSecondary.withValues(alpha: emphasizeValue ? 0.7 : 0.5),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withValues(alpha: emphasizeValue ? 0.35 : 0.2)),
         boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: emphasizeValue ? 0.32 : 0.26),
+            blurRadius: emphasizeValue ? 14 : 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -353,7 +439,18 @@ if (event.description != null && event.description!.isNotEmpty) ...[
             ],
           ),
           const SizedBox(height: 10),
-          Text(value, style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            value,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.w800,
+              height: 1.35,
+              color: AppColors.textPrimary,
+              fontSize: emphasizeValue ? 15 : null,
+            ),
+            maxLines: maxLines,
+            overflow: TextOverflow.fade,
+            softWrap: true,
+          ),
         ],
       ),
     );
