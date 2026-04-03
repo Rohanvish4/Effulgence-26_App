@@ -37,6 +37,7 @@ class UserProfileEntity {
 
   bool get isAdmin => role == 'ADMIN' || role == 'SUPER_ADMIN';
   bool get isSuperAdmin => role == 'SUPER_ADMIN';
+  bool get isApprover => role == 'APPROVER';
 
   bool get isApproved => approvalStatus == 'APPROVED';
   bool get isPending => approvalStatus == 'PENDING';

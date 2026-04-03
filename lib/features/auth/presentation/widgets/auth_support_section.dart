@@ -69,12 +69,14 @@ class _DevContactDialog extends StatelessWidget {
       'role': 'Technical Lead',
       'phone': '+91 9569379055',
       'raw': '9569379055',
+      'email': 'rohannic111@gmail.com',
     },
     {
       'name': 'Priyanshu',
       'role': 'Systems Architect',
       'phone': '+91 7068451653',
       'raw': '7068451653',
+      'email': 'priyanshu.sde@gmail.com',
     },
   ];
 
@@ -163,28 +165,38 @@ class _DevContactDialog extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              dev['name']!,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                dev['name']!,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              dev['phone']!,
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: AppColors.textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                              const SizedBox(height: 4),
+                              Text(
+                                dev['phone']!,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 3),
+                              SelectableText(
+                                dev['email']!,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const Spacer(),
                         _DevActionButton(
                           icon: Icons.copy_all_rounded,
                           label: 'Copy',

@@ -183,6 +183,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
                     const SizedBox(height: AppSpacing.md),
                     _buildAdminButton(context),
                   ],
+                   if (profile.isApprover) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    _buildAdminButton(context),
+                  ],
                   // const SizedBox(height: AppSpacing.xxl),
                   // _buildAccountActions(context),
                 ],
