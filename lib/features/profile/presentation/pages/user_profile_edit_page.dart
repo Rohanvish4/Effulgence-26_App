@@ -159,9 +159,9 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
             lockAspectRatio: true,
             backgroundColor: AppColors.bgSecondary,
             activeControlsWidgetColor: AppColors.primary,
-            dimmedLayerColor: Colors.black.withOpacity(0.8),
+            dimmedLayerColor: Colors.black.withValues(alpha: 0.8),
             cropFrameColor: AppColors.primary,
-            cropGridColor: AppColors.primary.withOpacity(0.5),
+            cropGridColor: AppColors.primary.withValues(alpha: 0.5),
             hideBottomControls: false,
           ),
           IOSUiSettings(

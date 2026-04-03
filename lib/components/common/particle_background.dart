@@ -184,84 +184,82 @@ class _ParticleBackgroundState extends State<ParticleBackground>
   Widget build(BuildContext context) {
     if (!_initialized) return const SizedBox();
 
-    return SafeArea(
-      child: Stack(
-        children: [
-          Container(color: AppColors.bgPrimary),
+    return Stack(
+      children: [
+        Container(color: AppColors.bgPrimary),
+        Positioned.fill(
+          child: RepaintBoundary(
+            child: CustomPaint(
+              painter: _particlePainter,
+            ),
+          ),
+        ),
+        if (_spawnedElements.isNotEmpty)
           Positioned.fill(
-            child: RepaintBoundary(
-              child: CustomPaint(
-                painter: _particlePainter,
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _particleController,
+                builder: (context, child) {
+                  final t = _particleController.value * 2 * math.pi;
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final w = constraints.maxWidth;
+                      final h = constraints.maxHeight;
+
+                      return Stack(
+                        children: _spawnedElements.map((e) {
+                          final dx = math.sin(t * e.speed + e.phaseX) * e.spec.driftX;
+                          final dy = math.cos(t * e.speed + e.phaseY) * e.spec.driftY;
+                          final r = t * e.rotationSpeed + e.phaseR;
+
+                          final left = (e.xNorm * w - e.size / 2 + dx).clamp(-e.size, w);
+                          final top = (e.yNorm * h - e.size / 2 + dy).clamp(-e.size, h);
+
+                          Widget elementChild = e.spec.builder?.call(context) ??
+                              Image.asset(
+                                e.spec.assetPath!,
+                                width: e.size,
+                                height: e.size,
+                                fit: e.spec.fit,
+                                filterQuality: FilterQuality.low,
+                                cacheWidth: (e.size * MediaQuery.of(context).devicePixelRatio).round(),
+                              );
+
+                          if (e.spec.blur) {
+                            elementChild = ImageFiltered(
+                              imageFilter: ui.ImageFilter.blur(
+                                sigmaX: e.spec.blurSigma,
+                                sigmaY: e.spec.blurSigma,
+                              ),
+                              child: elementChild,
+                            );
+                          }
+
+                          if (e.spec.rotationEnabled) {
+                            elementChild = Transform.rotate(
+                              angle: r,
+                              child: elementChild,
+                            );
+                          }
+
+                          return Positioned(
+                            left: left.toDouble(),
+                            top: top.toDouble(),
+                            child: Opacity(
+                              opacity: e.opacity,
+                              child: elementChild,
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ),
-          if (_spawnedElements.isNotEmpty)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: AnimatedBuilder(
-                  animation: _particleController,
-                  builder: (context, child) {
-                    final t = _particleController.value * 2 * math.pi;
-                    return LayoutBuilder(
-                      builder: (context, constraints) {
-                        final w = constraints.maxWidth;
-                        final h = constraints.maxHeight;
-
-                        return Stack(
-                          children: _spawnedElements.map((e) {
-                            final dx = math.sin(t * e.speed + e.phaseX) * e.spec.driftX;
-                            final dy = math.cos(t * e.speed + e.phaseY) * e.spec.driftY;
-                            final r = t * e.rotationSpeed + e.phaseR;
-
-                            final left = (e.xNorm * w - e.size / 2 + dx).clamp(-e.size, w);
-                            final top = (e.yNorm * h - e.size / 2 + dy).clamp(-e.size, h);
-
-                            Widget elementChild = e.spec.builder?.call(context) ??
-                                Image.asset(
-                                  e.spec.assetPath!,
-                                  width: e.size,
-                                  height: e.size,
-                                  fit: e.spec.fit,
-                                  filterQuality: FilterQuality.low,
-                                  cacheWidth: (e.size * MediaQuery.of(context).devicePixelRatio).round(),
-                                );
-
-                            if (e.spec.blur) {
-                              elementChild = ImageFiltered(
-                                imageFilter: ui.ImageFilter.blur(
-                                  sigmaX: e.spec.blurSigma,
-                                  sigmaY: e.spec.blurSigma,
-                                ),
-                                child: elementChild,
-                              );
-                            }
-
-                            if (e.spec.rotationEnabled) {
-                              elementChild = Transform.rotate(
-                                angle: r,
-                                child: elementChild,
-                              );
-                            }
-
-                            return Positioned(
-                              left: left.toDouble(),
-                              top: top.toDouble(),
-                              child: Opacity(
-                                opacity: e.opacity,
-                                child: elementChild,
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ),
-          if (widget.child != null) Positioned.fill(child: widget.child!),
-        ],
-      ),
+        if (widget.child != null) Positioned.fill(child: widget.child!),
+      ],
     );
   }
 

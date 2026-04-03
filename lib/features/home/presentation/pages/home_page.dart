@@ -100,27 +100,29 @@ class _HomePageState extends State<HomePage>
       body: ParticleBackground(
         floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
         child:
-         CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            _buildAppBar(),
-            _buildRemoteConfigBanner(context),
-            _buildWelcomeSection(),
-            // _buildQuickStats(),
-            _buildHighlightsCarousel(),
-            _buildBattlefieldsSection(),
-            _buildAboutSection(),
-             const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                child: FaqWidget(),
+         SafeArea(
+           child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              _buildAppBar(),
+              _buildRemoteConfigBanner(context),
+              _buildWelcomeSection(),
+              // _buildQuickStats(),
+              _buildHighlightsCarousel(),
+              _buildBattlefieldsSection(),
+              _buildAboutSection(),
+               const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: FaqWidget(),
+                ),
               ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
-            _buildInnovationSection(),  
-          ],
-        ),
+           
+              const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xl)),
+              _buildInnovationSection(),  
+            ],
+                   ),
+         ),
       ),
     );
 

@@ -137,7 +137,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: Colors.white),
                 onPressed: () {
@@ -159,7 +159,7 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
-                color: Colors.white.withOpacity(0.1),
+                color: Colors.white.withValues(alpha: 0.1),
                 child: IconButton(
                   icon: const Icon(Icons.share_rounded, size: 20, color: Colors.white),
                   onPressed: () {
@@ -238,9 +238,9 @@ class _EventDetailsPageState extends State<EventDetailsPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.secondary.withOpacity(0.15),
+              color: AppColors.secondary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+              border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -265,7 +265,7 @@ if (event.description != null && event.description!.isNotEmpty) ...[
               child: Text(
                 unescape.convert(event.description!),
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary.withOpacity(0.9),
+                  color: AppColors.textSecondary.withValues(alpha: 0.9),
                   height: 1.8,
                 ),
               ),
@@ -281,7 +281,7 @@ if (event.description != null && event.description!.isNotEmpty) ...[
               child: Text(
                 event.rules!,
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary.withOpacity(0.8),
+                  color: AppColors.textSecondary.withValues(alpha: 0.8),
                   height: 1.6,
                 ),
               ),
@@ -303,9 +303,9 @@ if (event.description != null && event.description!.isNotEmpty) ...[
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary.withOpacity(0.4),
+        color: AppColors.bgSecondary.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: child,
     );
@@ -335,9 +335,9 @@ if (event.description != null && event.description!.isNotEmpty) ...[
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.bgSecondary.withOpacity(0.5),
+        color: AppColors.bgSecondary.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(0, 4)),
         ],
@@ -370,8 +370,8 @@ if (event.description != null && event.description!.isNotEmpty) ...[
           child: Container(
             padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xl),
             decoration: BoxDecoration(
-              color: AppColors.bgPrimary.withOpacity(0.8),
-              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+              color: AppColors.bgPrimary.withValues(alpha: 0.8),
+              border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
             ),
             child: _buildRegistrationActions(context, event, state),
           ),
@@ -465,13 +465,13 @@ if (event.description != null && event.description!.isNotEmpty) ...[
       children: event.contacts!.map((contact) => Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: AppColors.bgSecondary.withOpacity(0.3),
+          color: AppColors.bgSecondary.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white10),
         ),
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          leading: CircleAvatar(backgroundColor: AppColors.primary.withOpacity(0.2), child: const Icon(Icons.person, color: AppColors.primary)),
+          leading: CircleAvatar(backgroundColor: AppColors.primary.withValues(alpha: 0.2), child: const Icon(Icons.person, color: AppColors.primary)),
           title: Text(contact.name, style: AppTextStyles.titleMedium),
           subtitle: Text(contact.post ?? 'Coordinator', style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMuted)),
           trailing: IconButton(
@@ -520,9 +520,9 @@ if (event.description != null && event.description!.isNotEmpty) ...[
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -17,6 +17,10 @@ class RemoteConfigService {
   static const String _keyEnableRegistrations = 'enable_registrations';
   static const String _keyNotificationExpiryTime = 'notification_expiry_time';
   static const String _keyTechfestDay = 'techfest_day';
+    static const String _keyAccommodationReminderVisible =
+      'accommodation_reminder_visible';
+    static const String _keyAccommodationPaymentDeadline =
+      'accommodation_payment_deadline';
 
   Future<void> initialize() async {
     try {
@@ -38,6 +42,8 @@ class RemoteConfigService {
         _keyEnableRegistrations: true,
         _keyNotificationExpiryTime: 24,
         _keyTechfestDay: 1,
+        _keyAccommodationReminderVisible: true,
+        _keyAccommodationPaymentDeadline: '2026-04-06',
       });
 
       await _remoteConfig.fetchAndActivate();
@@ -65,6 +71,18 @@ class RemoteConfigService {
   int get notificationExpiryTime => _remoteConfig.getInt(_keyNotificationExpiryTime); // in hours 
 
   int get techfestDay => _remoteConfig.getInt(_keyTechfestDay);
+
+  bool get isAccommodationReminderVisible =>
+      _remoteConfig.getBool(_keyAccommodationReminderVisible);
+
+  DateTime get accommodationPaymentDeadline {
+    final raw = _remoteConfig.getString(_keyAccommodationPaymentDeadline).trim();
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) {
+      return DateTime(2026, 4, 6);
+    }
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
 
   // --- Update Logic ---
 

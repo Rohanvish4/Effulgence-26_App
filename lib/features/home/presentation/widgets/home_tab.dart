@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:effulgence26_mobile_app/features/auth/presentation/cubit/auth_state.dart';
+import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/admin_events_page.dart';
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_page.dart';
 import 'package:effulgence26_mobile_app/features/sponsors/presentation/pages/sponsors_list_page.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
+import 'accommodation_reminder_dialog.dart';
 import '../pages/home_page.dart';
 import 'sidebar_menu.dart';
 
@@ -30,6 +32,7 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
   late Animation<double> _slideAnimation;
   late Animation<double> _radiusAnimation;
   late PageController _pageController;
+  bool _hasShownAccommodationReminder = false;
 
   // Drawer state
   bool _isDrawerOpen = false;
@@ -59,6 +62,10 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
 
     _pageController = PageController(initialPage: _currentIndex);
     _pageController.addListener(_onPageChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowAccommodationReminder();
+    });
   }
 
   @override
@@ -92,6 +99,45 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
       _animationController.reverse();
       setState(() => _isDrawerOpen = false);
     }
+  }
+
+  void goToProfileTab() {
+    if (_currentIndex == 3 || !_pageController.hasClients) return;
+
+    HapticFeedback.lightImpact();
+    _pageController.animateToPage(
+      3,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _maybeShowAccommodationReminder() {
+    if (_hasShownAccommodationReminder || !mounted) return;
+
+    final authState = context.read<AuthCubit>().state;
+    if (authState is! AuthAuthenticated) return;
+
+    final remoteConfig = context.read<RemoteConfigService>();
+    if (!remoteConfig.isAccommodationReminderVisible) return;
+
+    final user = authState.user;
+    final shouldShowReminder = !user.isInternalUser && !user.isApproved;
+    if (!shouldShowReminder) return;
+
+    _hasShownAccommodationReminder = true;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (_) {
+        return AccommodationReminderDialog(
+          deadline: remoteConfig.accommodationPaymentDeadline,
+          onCompletePayment: goToProfileTab,
+        );
+      },
+    );
   }
 
   @override
@@ -177,7 +223,7 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
         ];
 
         return Scaffold(
-          extendBody: true,
+          extendBody: false,
           body: PageView(
             controller: _pageController,
             physics: const BouncingScrollPhysics(),
@@ -191,51 +237,60 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
 
   Widget _buildFloatingNavBar(bool isAdmin) {
     return Container(
-      height: 70,
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 25), // Floating margin
+      height: 78,
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.3),
-                width: 1.5,
+        borderRadius: BorderRadius.circular(26),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                AppColors.bgOverlay,
+                AppColors.surface,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(26),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.18),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.42),
+                blurRadius: 26,
+                offset: const Offset(0, 12),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  0,
-                  Icons.home_rounded,
-                  'Home',
-                  assetPath: 'assets/icons/home.png',
-                  selectedAssetPath: 'assets/icons/home_selected.png',
-                ),
-                _buildNavItem(1, Icons.bolt_rounded,assetPath: 'assets/icons/calendar.png', selectedAssetPath: 'assets/icons/calendar_selected.png', 'Events'),
-                _buildNavItem(2, Icons.handshake_rounded, 'Partners'),
-                _buildNavItem(
-                  3,
-                  Icons.person_rounded,
-                  'Profile',
-                  assetPath: 'assets/icons/profile.png',
-                  selectedAssetPath: 'assets/icons/profile_selected.png',
-                ),
-                if (isAdmin)
-                  _buildNavItem(4, Icons.admin_panel_settings_rounded,assetPath: 'assets/icons/admin.png', selectedAssetPath: 'assets/icons/admin_selected.png',   'Admin'),
-              ],
-            ),
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                blurRadius: 14,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                0,
+                Icons.home_rounded,
+                'Home',
+                assetPath: 'assets/icons/home.png',
+                selectedAssetPath: 'assets/icons/home_selected.png',
+              ),
+              _buildNavItem(1, Icons.bolt_rounded,assetPath: 'assets/icons/calendar.png', selectedAssetPath: 'assets/icons/calendar_selected.png', 'Events'),
+              _buildNavItem(2, Icons.handshake_rounded, 'Partners'),
+              _buildNavItem(
+                3,
+                Icons.person_rounded,
+                'Profile',
+                assetPath: 'assets/icons/profile.png',
+                selectedAssetPath: 'assets/icons/profile_selected.png',
+              ),
+              if (isAdmin)
+                _buildNavItem(4, Icons.admin_panel_settings_rounded,assetPath: 'assets/icons/admin.png', selectedAssetPath: 'assets/icons/admin_selected.png',   'Admin'),
+            ],
           ),
         ),
       ),
@@ -263,48 +318,62 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(
+          AnimatedScale(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
+            scale: isSelected ? 1.05 : 1,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+                border: isSelected
+                    ? Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        width: 0.8,
+                      )
+                    : null,
+              ),
+              child: assetPath != null
+                  ? Image.asset(
+                      isSelected
+                          ? (selectedAssetPath ?? assetPath)
+                          : assetPath,
+                      width: isSelected ? 26 : 24,
+                      height: isSelected ? 26 : 24,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                    )
+                  : Icon(
+                      icon,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textSecondary,
+                      size: isSelected ? 26 : 24,
+                    ),
             ),
-            child: assetPath != null
-                ? Image.asset(
-                    isSelected
-                        ? (selectedAssetPath ?? assetPath)
-                        : assetPath,
-                    width: isSelected ? 26 : 24,
-                    height: isSelected ? 26 : 24,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                  )
-                : Icon(
-                    icon,
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.textSecondary,
-                    size: isSelected ? 26 : 24,
-                  ),
-            ),
-          if (isSelected)
-            Text(
+          ),
+          const SizedBox(height: 3),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 220),
+            opacity: isSelected ? 1 : 0.65,
+            child: Text(
               label,
               style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.primary,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
                 fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                letterSpacing: 0.4,
               ),
-            )
-          else
-            const SizedBox(height: 12), // Maintain height to prevent shift
+            ),
+          ),
         ],
       ),
     );
