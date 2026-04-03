@@ -149,7 +149,7 @@ class SidebarMenu extends StatelessWidget {
 
                  Row(
                    children: [
-                    SizedBox(width: 50),
+                    SizedBox(width: 24),
                      InkWell(
                         onTap: () => AuthSupportSection.showSupportDialog(context),
                         borderRadius: BorderRadius.circular(30),
@@ -174,7 +174,7 @@ class SidebarMenu extends StatelessWidget {
                               ),
                               const SizedBox(width: 5),
                               Text(
-                                'Need help',
+                                'Technical Issue?',
                                 style: AppTextStyles.labelSmall.copyWith(
                                   color: AppColors.primary,
                                   fontWeight: FontWeight.w700,
@@ -203,7 +203,7 @@ class SidebarMenu extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 Text(
-                  "Version 1.0.3",
+                  "Version 1.0.12",
                   style: AppTextStyles.labelSmall.copyWith(
                     color: Colors.white38,
                   ),
