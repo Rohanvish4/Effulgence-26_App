@@ -10,6 +10,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_spacing.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import '../../domain/entities/sponsor_entity.dart';
+import '../widgets/sponsor_logo_image.dart';
 
 /// Individual sponsor booth page with immersive experience
 class SponsorBoothPage extends StatelessWidget {
@@ -123,29 +124,12 @@ class SponsorBoothPage extends StatelessWidget {
                           ),
                         ],
                       ),
-                      child: UrlUtils.isValidUrl(sponsor.logoUrl)
-                          ? CachedNetworkImage(
-                              imageUrl: sponsor.logoUrl,
-                              height: 100,
-                              width: 180,
-                              fit: BoxFit.contain,
-                              errorWidget: (context, url, error) => Icon(
-                                Icons.business,
-                                size: 100,
-                                color: AppColors.textSecondary,
-                              ),
-                              placeholder: (context, url) => Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            )
-                          : Icon(
-                              Icons.business,
-                              size: 100,
-                              color: AppColors.textSecondary,
-                            ),
+                      child: SponsorLogoImage(
+                        logoUrl: sponsor.logoUrl,
+                        height: 100,
+                        width: 180,
+                        fallbackIconSize: 100,
+                      ),
                     ),
                   ),
                 ],
