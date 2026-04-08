@@ -4,11 +4,13 @@ class ParticipationUser {
   final String id;
   final String name;
   final String email;
+  final String mobile;
 
   const ParticipationUser({
     required this.id,
     required this.name,
     required this.email,
+    required this.mobile,
   });
 }
 
@@ -54,6 +56,8 @@ class ParticipationEntity {
       user?.name ?? (teamMembers.isNotEmpty ? teamMembers[0].name : 'Unknown');
     String get userEmail =>
       user?.email ?? (teamMembers.isNotEmpty ? teamMembers[0].email : '');
+    String get userMobile =>
+      user?.mobile ?? (teamMembers.isNotEmpty ? teamMembers[0].mobile : '');
 
   List<String> get teamMemberNames =>
       teamMembers.map((member) => member.name).toList();

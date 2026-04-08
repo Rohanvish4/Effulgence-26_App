@@ -40,17 +40,38 @@ abstract class EventsRemoteDataSource {
 
   // ADMIN/SUPER_ADMIN/MEMBER OPERATIONS
   Future<List<ParticipationModel>> getEventRegistrations(String eventId);
+  Future<void> markParticipationAttendance(
+    String eventId,
+    String participationId,
+    bool isPresent,
+  );
+  Future<Map<String, dynamic>> getParticipantFullDetails(String userId);
 
   // NEW TEAM MANAGEMENT METHODS
   Future<ParticipationModel?> getMyTeam(String eventId);
   Future<ParticipationModel> getTeamDetails(String eventId, String teamId);
   Future<void> removeTeamMember(String eventId, String teamId, String memberId);
-  Future<void> editTeam(String eventId, String teamId, String teamName, bool isPublic);
+  Future<void> editTeam(
+    String eventId,
+    String teamId,
+    String teamName,
+    bool isPublic,
+  );
   Future<void> deleteTeam(String eventId, String teamId);
   Future<void> inviteToTeam(String eventId, String teamId, String email);
-  Future<void> respondToInvite(String eventId, String teamId, String inviteId, String action);
+  Future<void> respondToInvite(
+    String eventId,
+    String teamId,
+    String inviteId,
+    String action,
+  );
   Future<void> requestToJoinTeam(String eventId, String teamId);
-  Future<void> respondToJoinRequest(String eventId, String teamId, String requestId, String action);
+  Future<void> respondToJoinRequest(
+    String eventId,
+    String teamId,
+    String requestId,
+    String action,
+  );
   Future<List<dynamic>> getTeamInvitations(String eventId, String teamId);
   Future<List<dynamic>> getTeamJoinRequests(String eventId, String teamId);
   Future<List<dynamic>> getMyInvitations();
@@ -157,7 +178,9 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
 
     // Backend returns: { data: [...] } or { message: "No teams...", data: [] }
     final List<dynamic> data = response.data['data'] ?? [];
-    return data.map((json) => PublicTeamModel.fromJson(json as Map<String, dynamic>)).toList();
+    return data
+        .map((json) => PublicTeamModel.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
 
   @override
@@ -182,9 +205,8 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
       'eventVenue': params.eventVenue,
       'eventTime': params.eventTime.toUtc().toIso8601String(),
       'endTime': params.endTime.toUtc().toIso8601String(),
-      'registrationDeadline': params.registrationDeadline
-          .toUtc()
-          .toIso8601String(),
+      'registrationDeadline':
+          params.registrationDeadline.toUtc().toIso8601String(),
       'eventRound': params.eventRound,
     };
 
@@ -218,9 +240,8 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
       data['endTime'] = params.endTime!.toUtc().toIso8601String();
     }
     if (params.registrationDeadline != null) {
-      data['registrationDeadline'] = params.registrationDeadline!
-          .toUtc()
-          .toIso8601String();
+      data['registrationDeadline'] =
+          params.registrationDeadline!.toUtc().toIso8601String();
     }
     if (params.eventRound != null) data['eventRound'] = params.eventRound;
     if (params.teamConfig != null) {
@@ -229,7 +250,6 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
         'maxSize': params.teamConfig!.maxSize,
       };
     }
-
 
     final response = await apiClient.patch('/events/$eventId/edit', data: data);
     return EventModel.fromJson(response.data['event']);
@@ -253,6 +273,26 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
     return data.map((json) => ParticipationModel.fromJson(json)).toList();
   }
 
+  @override
+  Future<void> markParticipationAttendance(
+    String eventId,
+    String participationId,
+    bool isPresent,
+  ) async {
+    await apiClient.patch(
+      '/events/$eventId/registrations/$participationId/attendance',
+      data: {'isPresent': isPresent},
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getParticipantFullDetails(String userId) async {
+    final response = await apiClient.get(
+      '/events/participants/$userId/full-details',
+    );
+    return Map<String, dynamic>.from(response.data['data'] ?? {});
+  }
+
   // TEAM MANAGEMENT IMPLEMENTATION
   @override
   Future<ParticipationModel?> getMyTeam(String eventId) async {
@@ -270,13 +310,20 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
   }
 
   @override
-  Future<ParticipationModel> getTeamDetails(String eventId, String teamId) async {
+  Future<ParticipationModel> getTeamDetails(
+    String eventId,
+    String teamId,
+  ) async {
     final response = await apiClient.get('/events/$eventId/team/$teamId');
     return ParticipationModel.fromJson(response.data['data']);
   }
 
   @override
-  Future<void> removeTeamMember(String eventId, String teamId, String memberId) async {
+  Future<void> removeTeamMember(
+    String eventId,
+    String teamId,
+    String memberId,
+  ) async {
     await apiClient.delete('/events/$eventId/team/$teamId/member/$memberId');
   }
 
@@ -299,11 +346,7 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
   }
 
   @override
-  Future<void> inviteToTeam(
-    String eventId,
-    String teamId,
-    String email,
-  ) async {
+  Future<void> inviteToTeam(String eventId, String teamId, String email) async {
     await apiClient.post(
       '/events/$eventId/team/$teamId/invite',
       data: {'email': email},
@@ -342,14 +385,24 @@ class EventsRemoteDataSourceImpl implements EventsRemoteDataSource {
   }
 
   @override
-  Future<List<dynamic>> getTeamInvitations(String eventId, String teamId) async {
-    final response = await apiClient.get('/events/$eventId/team/$teamId/invitations');
+  Future<List<dynamic>> getTeamInvitations(
+    String eventId,
+    String teamId,
+  ) async {
+    final response = await apiClient.get(
+      '/events/$eventId/team/$teamId/invitations',
+    );
     return response.data['data'] ?? [];
   }
 
   @override
-  Future<List<dynamic>> getTeamJoinRequests(String eventId, String teamId) async {
-    final response = await apiClient.get('/events/$eventId/team/$teamId/requests');
+  Future<List<dynamic>> getTeamJoinRequests(
+    String eventId,
+    String teamId,
+  ) async {
+    final response = await apiClient.get(
+      '/events/$eventId/team/$teamId/requests',
+    );
     return response.data['data'] ?? [];
   }
 

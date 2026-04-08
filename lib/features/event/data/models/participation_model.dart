@@ -23,20 +23,23 @@ class ParticipationModel extends ParticipationEntity {
   factory ParticipationModel.fromJson(Map<String, dynamic> json) {
     return ParticipationModel(
       id: json['_id'] ?? json['id'] ?? '',
-      eventId: json['event'] is Map
-          ? (json['event']['_id'] ?? '')
-          : (json['event'] ?? ''),
+      eventId:
+          json['event'] is Map
+              ? (json['event']['_id'] ?? '')
+              : (json['event'] ?? ''),
       user: _parseUser(json['user']),
       teamMembers: _parseTeamMembers(json['teamMember']),
       teamName: json['teamName'],
       participationType: json['participationType'] ?? 'INDIVIDUAL',
-      registeredAt: json['registeredAt'] != null
-          ? DateTime.parse(json['registeredAt'])
-          : DateTime.now(),
+      registeredAt:
+          json['registeredAt'] != null
+              ? DateTime.parse(json['registeredAt'])
+              : DateTime.now(),
       isPresent: json['isPresent'] ?? false,
-      markedPresentAt: json['markedPresentAt'] != null
-          ? DateTime.parse(json['markedPresentAt'])
-          : null,
+      markedPresentAt:
+          json['markedPresentAt'] != null
+              ? DateTime.parse(json['markedPresentAt'])
+              : null,
       rank: json['rank'],
       score: json['score'] ?? 0,
       isQualified: json['isQualified'] ?? false,
@@ -51,10 +54,16 @@ class ParticipationModel extends ParticipationEntity {
         id: userJson['_id'] ?? userJson['id'] ?? '',
         name: userJson['name'] ?? 'Unknown',
         email: userJson['email'] ?? '',
+        mobile: userJson['mobile'] ?? '',
       );
     } else if (userJson is String && userJson.isNotEmpty) {
       // Fallback if we only receive an ID string
-      return ParticipationUser(id: userJson, name: 'Unknown', email: '');
+      return ParticipationUser(
+        id: userJson,
+        name: 'Unknown',
+        email: '',
+        mobile: '',
+      );
     }
     return null;
   }
@@ -67,12 +76,23 @@ class ParticipationModel extends ParticipationEntity {
             id: member['_id'] ?? member['id'] ?? '',
             name: member['name'] ?? 'Unknown',
             email: member['email'] ?? '',
+            mobile: member['mobile'] ?? '',
           );
         }
         if (member is String && member.isNotEmpty) {
-          return ParticipationUser(id: member, name: 'Unknown', email: '');
+          return ParticipationUser(
+            id: member,
+            name: 'Unknown',
+            email: '',
+            mobile: '',
+          );
         }
-        return const ParticipationUser(id: '', name: 'Unknown', email: '');
+        return const ParticipationUser(
+          id: '',
+          name: 'Unknown',
+          email: '',
+          mobile: '',
+        );
       }).toList();
     }
     return [];
@@ -83,18 +103,26 @@ class ParticipationModel extends ParticipationEntity {
     return {
       '_id': id,
       'event': eventId,
-      'user': user != null
-          ? {'_id': user!.id, 'name': user!.name, 'email': user!.email}
-          : userId, // Fallback to ID string if that's what was there or empty
-      'teamMember': teamMembers
-          .map(
-            (member) => {
-              '_id': member.id,
-              'name': member.name,
-              'email': member.email,
-            },
-          )
-          .toList(),
+      'user':
+          user != null
+              ? {
+                '_id': user!.id,
+                'name': user!.name,
+                'email': user!.email,
+                'mobile': user!.mobile,
+              }
+              : userId, // Fallback to ID string if that's what was there or empty
+      'teamMember':
+          teamMembers
+              .map(
+                (member) => {
+                  '_id': member.id,
+                  'name': member.name,
+                  'email': member.email,
+                  'mobile': member.mobile,
+                },
+              )
+              .toList(),
       'teamName': teamName,
       'participationType': participationType,
       'registeredAt': registeredAt.toIso8601String(),

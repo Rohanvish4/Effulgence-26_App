@@ -1,4 +1,5 @@
 import 'package:effulgence26_mobile_app/features/event/domain/entities/event_params.dart';
+import 'package:effulgence26_mobile_app/features/event/domain/entities/participation_entity.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/repositories/events_repository.dart';
 import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,7 +14,7 @@ import 'events_state.dart';
 class EventsCubit extends Cubit<EventsState> {
   // DEPENDENCY: Domain layer repository (business logic interface)
   final EventsRepository eventsRepository;
-  
+
   // Debouncer for search operations (prevents duplicate API calls)
   final Debouncer _searchDebouncer = Debouncer(milliseconds: 500);
 
@@ -62,8 +63,10 @@ class EventsCubit extends Cubit<EventsState> {
         state.copyWith(isDetailsLoading: false, errorMessage: failure.message),
       ),
       (event) {
-          AnalyticsService.instance.logEventViewed(event.id, event.title).catchError((_) {});
-          emit(state.copyWith(isDetailsLoading: false, selectedEvent: event));
+        AnalyticsService.instance
+            .logEventViewed(event.id, event.title)
+            .catchError((_) {});
+        emit(state.copyWith(isDetailsLoading: false, selectedEvent: event));
       },
     );
   }
@@ -89,7 +92,9 @@ class EventsCubit extends Cubit<EventsState> {
       ),
       (_) {
         final eventName = state.selectedEvent?.title ?? 'Unknown Event';
-        AnalyticsService.instance.logEventRegistered(eventId, eventName).catchError((_) {});
+        AnalyticsService.instance
+            .logEventRegistered(eventId, eventName)
+            .catchError((_) {});
         emit(
           state.copyWith(
             isOperationLoading: false,
@@ -217,7 +222,9 @@ class EventsCubit extends Cubit<EventsState> {
         ),
       ),
       (_) {
-        AnalyticsService.instance.logTeamJoined(eventId, teamId).catchError((_) {});
+        AnalyticsService.instance
+            .logTeamJoined(eventId, teamId)
+            .catchError((_) {});
         emit(
           state.copyWith(
             isOperationLoading: false,
@@ -306,7 +313,8 @@ class EventsCubit extends Cubit<EventsState> {
         state.copyWith(
           isOperationLoading: false,
           successMessage: 'Event updated',
-          events: state.events.map((e) => e.id == event.id ? event : e).toList(),
+          events:
+              state.events.map((e) => e.id == event.id ? event : e).toList(),
         ),
       ),
     );
@@ -379,6 +387,61 @@ class EventsCubit extends Cubit<EventsState> {
     );
   }
 
+  Future<void> markParticipationAttendance({
+    required String eventId,
+    required String participationId,
+    required bool isPresent,
+  }) async {
+    final result = await eventsRepository.markParticipationAttendance(
+      eventId,
+      participationId,
+      isPresent,
+    );
+
+    result.fold(
+      (failure) => emit(state.copyWith(errorMessage: failure.message)),
+      (_) {
+        final updatedParticipations = state.myParticipations.map((participation) {
+          if (participation.id != participationId) {
+            return participation;
+          }
+
+          return ParticipationEntity(
+            id: participation.id,
+            eventId: participation.eventId,
+            user: participation.user,
+            teamMembers: participation.teamMembers,
+            teamName: participation.teamName,
+            participationType: participation.participationType,
+            registeredAt: participation.registeredAt,
+            isPresent: isPresent,
+            markedPresentAt: isPresent ? DateTime.now() : null,
+            rank: participation.rank,
+            score: participation.score,
+            isQualified: participation.isQualified,
+            remarks: participation.remarks,
+            isPublic: participation.isPublic,
+          );
+        }).toList();
+
+        emit(
+          state.copyWith(
+            myParticipations: updatedParticipations,
+            errorMessage: null,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>?> getParticipantFullDetails(String userId) async {
+    final result = await eventsRepository.getParticipantFullDetails(userId);
+    return result.fold((failure) {
+      emit(state.copyWith(errorMessage: failure.message));
+      return null;
+    }, (details) => details);
+  }
+
   /// Debounced search for events (prevents duplicate API calls during rapid typing)
 
   Future<void> debouncedSearchEvents(String query) async {
@@ -418,21 +481,25 @@ class EventsCubit extends Cubit<EventsState> {
   // ===========================================================================
 
   Future<void> getMyTeam(String eventId) async {
-    // Check if we already have the team for this event to avoid flicker? 
+    // Check if we already have the team for this event to avoid flicker?
     // For now, simple loading state.
     emit(state.copyWith(isParticipationsLoading: true));
-    
+
     final result = await eventsRepository.getMyTeam(eventId);
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(
-        isParticipationsLoading: false, 
-        errorMessage: failure.message
-      )),
-      (team) => emit(state.copyWith(
-        isParticipationsLoading: false,
-        myTeam: team, // Can be null if not in team
-      )),
+      (failure) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (team) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          myTeam: team, // Can be null if not in team
+        ),
+      ),
     );
   }
 
@@ -442,12 +509,26 @@ class EventsCubit extends Cubit<EventsState> {
     required String memberId,
   }) async {
     emit(state.copyWith(isOperationLoading: true));
-    final result = await eventsRepository.removeTeamMember(eventId, teamId, memberId);
-    
+    final result = await eventsRepository.removeTeamMember(
+      eventId,
+      teamId,
+      memberId,
+    );
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(isOperationLoading: false, successMessage: 'Member removed'));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Member removed',
+          ),
+        );
         // Refresh team details
         getMyTeam(eventId);
       },
@@ -461,12 +542,27 @@ class EventsCubit extends Cubit<EventsState> {
     required bool isPublic,
   }) async {
     emit(state.copyWith(isOperationLoading: true));
-    final result = await eventsRepository.editTeam(eventId, teamId, teamName, isPublic);
-    
+    final result = await eventsRepository.editTeam(
+      eventId,
+      teamId,
+      teamName,
+      isPublic,
+    );
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(isOperationLoading: false, successMessage: 'Team updated'));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Team updated',
+          ),
+        );
         getMyTeam(eventId);
       },
     );
@@ -478,15 +574,22 @@ class EventsCubit extends Cubit<EventsState> {
   }) async {
     emit(state.copyWith(isOperationLoading: true));
     final result = await eventsRepository.deleteTeam(eventId, teamId);
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(
-          isOperationLoading: false, 
-          successMessage: 'Team deleted',
-          clearMyTeam: true, // Reset team state properly
-        ));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Team deleted',
+            clearMyTeam: true, // Reset team state properly
+          ),
+        );
         loadMyParticipations(); // Update global participations list
       },
     );
@@ -499,11 +602,21 @@ class EventsCubit extends Cubit<EventsState> {
   }) async {
     emit(state.copyWith(isOperationLoading: true));
     final result = await eventsRepository.inviteToTeam(eventId, teamId, email);
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(isOperationLoading: false, successMessage: 'Invitation sent'));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Invitation sent',
+          ),
+        );
         // Refresh invitations list for the team
         getTeamInvitations(eventId, teamId);
       },
@@ -517,18 +630,33 @@ class EventsCubit extends Cubit<EventsState> {
     required String action,
   }) async {
     emit(state.copyWith(isOperationLoading: true));
-    final result = await eventsRepository.respondToInvite(eventId, teamId, inviteId, action);
-    
+    final result = await eventsRepository.respondToInvite(
+      eventId,
+      teamId,
+      inviteId,
+      action,
+    );
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
         if (action == 'ACCEPTED') {
-          AnalyticsService.instance.logTeamJoined(eventId, teamId).catchError((_) {});
+          AnalyticsService.instance
+              .logTeamJoined(eventId, teamId)
+              .catchError((_) {});
         }
-        emit(state.copyWith(
-          isOperationLoading: false, 
-          successMessage: action == 'ACCEPTED' ? 'Joined team!' : 'Invitation declined'
-        ));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage:
+                action == 'ACCEPTED' ? 'Joined team!' : 'Invitation declined',
+          ),
+        );
         getMyInvitations(); // Refresh my invitations
         if (action == 'ACCEPTED') {
           loadMyParticipations();
@@ -543,11 +671,21 @@ class EventsCubit extends Cubit<EventsState> {
   }) async {
     emit(state.copyWith(isOperationLoading: true));
     final result = await eventsRepository.requestToJoinTeam(eventId, teamId);
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(isOperationLoading: false, successMessage: 'Join request sent'));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage: 'Join request sent',
+          ),
+        );
         getMyJoinRequests(); // Refresh my requests
       },
     );
@@ -560,19 +698,32 @@ class EventsCubit extends Cubit<EventsState> {
     required String action,
   }) async {
     emit(state.copyWith(isOperationLoading: true));
-    final result = await eventsRepository.respondToJoinRequest(eventId, teamId, requestId, action);
-    
+    final result = await eventsRepository.respondToJoinRequest(
+      eventId,
+      teamId,
+      requestId,
+      action,
+    );
+
     result.fold(
-      (failure) => emit(state.copyWith(isOperationLoading: false, errorMessage: failure.message)),
+      (failure) => emit(
+        state.copyWith(
+          isOperationLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
       (_) {
-        emit(state.copyWith(
-          isOperationLoading: false, 
-          successMessage: action == 'ACCEPTED' ? 'Request accepted' : 'Request rejected'
-        ));
+        emit(
+          state.copyWith(
+            isOperationLoading: false,
+            successMessage:
+                action == 'ACCEPTED' ? 'Request accepted' : 'Request rejected',
+          ),
+        );
         // Refresh requests list for the team
         getTeamJoinRequests(eventId, teamId);
         // Refresh team members if accepted
-         if (action == 'ACCEPTED') {
+        if (action == 'ACCEPTED') {
           getMyTeam(eventId);
         }
       },
@@ -583,9 +734,9 @@ class EventsCubit extends Cubit<EventsState> {
     // Silent load or specific loading state, Using operation loading for now to keep it simple
     // or better, just update the list silenty if it's a refresh.
     // For now, let's not block UI with full loading screen, but update state.
-    
+
     final result = await eventsRepository.getTeamInvitations(eventId, teamId);
-    
+
     result.fold(
       (failure) => null, // Silently fail or log?
       (invitations) => emit(state.copyWith(teamInvitations: invitations)),
@@ -594,7 +745,7 @@ class EventsCubit extends Cubit<EventsState> {
 
   Future<void> getTeamJoinRequests(String eventId, String teamId) async {
     final result = await eventsRepository.getTeamJoinRequests(eventId, teamId);
-    
+
     result.fold(
       (failure) => null,
       (requests) => emit(state.copyWith(teamJoinRequests: requests)),
@@ -604,20 +755,40 @@ class EventsCubit extends Cubit<EventsState> {
   Future<void> getMyInvitations() async {
     emit(state.copyWith(isParticipationsLoading: true));
     final result = await eventsRepository.getMyInvitations();
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isParticipationsLoading: false, errorMessage: failure.message)),
-      (invitations) => emit(state.copyWith(isParticipationsLoading: false, myInvitations: invitations)),
+      (failure) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (invitations) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          myInvitations: invitations,
+        ),
+      ),
     );
   }
 
   Future<void> getMyJoinRequests() async {
     emit(state.copyWith(isParticipationsLoading: true));
     final result = await eventsRepository.getMyJoinRequests();
-    
+
     result.fold(
-      (failure) => emit(state.copyWith(isParticipationsLoading: false, errorMessage: failure.message)),
-      (requests) => emit(state.copyWith(isParticipationsLoading: false, myJoinRequests: requests)),
+      (failure) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          errorMessage: failure.message,
+        ),
+      ),
+      (requests) => emit(
+        state.copyWith(
+          isParticipationsLoading: false,
+          myJoinRequests: requests,
+        ),
+      ),
     );
   }
 
