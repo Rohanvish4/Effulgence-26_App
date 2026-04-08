@@ -286,7 +286,9 @@ class _AdminEventRegistrationsPageState
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+     ..clearSnackBars()
+    ..showSnackBar(
       SnackBar(
         content: Text(isPresent ? 'Marked present' : 'Marked absent'),
         backgroundColor: AppColors.success,
