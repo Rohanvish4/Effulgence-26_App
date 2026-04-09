@@ -1,4 +1,5 @@
 import 'package:effulgence26_mobile_app/features/event/domain/entities/event_params.dart';
+import 'package:effulgence26_mobile_app/features/event/domain/entities/event_entity.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/entities/participation_entity.dart';
 import 'package:effulgence26_mobile_app/features/event/domain/repositories/events_repository.dart';
 import 'package:effulgence26_mobile_app/core/utils/debounce_helper.dart';
@@ -12,6 +13,9 @@ import 'events_state.dart';
 ///
 /// FLOW: UI Event → Cubit Method → Repository → DataSource → API → Response → State Emission → UI Update
 class EventsCubit extends Cubit<EventsState> {
+  static const Duration _timelineFallbackDuration = Duration(hours: 1);
+  static const Duration _timelineSoonThreshold = Duration(minutes: 30);
+
   // DEPENDENCY: Domain layer repository (business logic interface)
   final EventsRepository eventsRepository;
 
@@ -41,8 +45,20 @@ class EventsCubit extends Cubit<EventsState> {
         state.copyWith(
           isEventsLoading: false,
           events: events,
+          timelineItems: _buildTimelineItems(events, DateTime.now()),
+          timelineComputedAt: DateTime.now(),
           status: EventsStatus.success,
         ),
+      ),
+    );
+  }
+
+  void refreshTimelineItems({DateTime? at}) {
+    final now = at ?? DateTime.now();
+    emit(
+      state.copyWith(
+        timelineItems: _buildTimelineItems(state.events, now),
+        timelineComputedAt: now,
       ),
     );
   }
@@ -288,6 +304,11 @@ class EventsCubit extends Cubit<EventsState> {
           isOperationLoading: false,
           successMessage: 'Event created',
           events: [...state.events, event],
+          timelineItems: _buildTimelineItems([
+            ...state.events,
+            event,
+          ], DateTime.now()),
+          timelineComputedAt: DateTime.now(),
         ),
       ),
     );
@@ -315,6 +336,11 @@ class EventsCubit extends Cubit<EventsState> {
           successMessage: 'Event updated',
           events:
               state.events.map((e) => e.id == event.id ? event : e).toList(),
+          timelineItems: _buildTimelineItems(
+            state.events.map((e) => e.id == event.id ? event : e).toList(),
+            DateTime.now(),
+          ),
+          timelineComputedAt: DateTime.now(),
         ),
       ),
     );
@@ -401,28 +427,29 @@ class EventsCubit extends Cubit<EventsState> {
     result.fold(
       (failure) => emit(state.copyWith(errorMessage: failure.message)),
       (_) {
-        final updatedParticipations = state.myParticipations.map((participation) {
-          if (participation.id != participationId) {
-            return participation;
-          }
+        final updatedParticipations =
+            state.myParticipations.map((participation) {
+              if (participation.id != participationId) {
+                return participation;
+              }
 
-          return ParticipationEntity(
-            id: participation.id,
-            eventId: participation.eventId,
-            user: participation.user,
-            teamMembers: participation.teamMembers,
-            teamName: participation.teamName,
-            participationType: participation.participationType,
-            registeredAt: participation.registeredAt,
-            isPresent: isPresent,
-            markedPresentAt: isPresent ? DateTime.now() : null,
-            rank: participation.rank,
-            score: participation.score,
-            isQualified: participation.isQualified,
-            remarks: participation.remarks,
-            isPublic: participation.isPublic,
-          );
-        }).toList();
+              return ParticipationEntity(
+                id: participation.id,
+                eventId: participation.eventId,
+                user: participation.user,
+                teamMembers: participation.teamMembers,
+                teamName: participation.teamName,
+                participationType: participation.participationType,
+                registeredAt: participation.registeredAt,
+                isPresent: isPresent,
+                markedPresentAt: isPresent ? DateTime.now() : null,
+                rank: participation.rank,
+                score: participation.score,
+                isQualified: participation.isQualified,
+                remarks: participation.remarks,
+                isPublic: participation.isPublic,
+              );
+            }).toList();
 
         emit(
           state.copyWith(
@@ -447,7 +474,14 @@ class EventsCubit extends Cubit<EventsState> {
   Future<void> debouncedSearchEvents(String query) async {
     _searchDebouncer.run(() async {
       if (query.isEmpty) {
-        emit(state.copyWith(events: [], errorMessage: null));
+        emit(
+          state.copyWith(
+            events: [],
+            timelineItems: const [],
+            errorMessage: null,
+            timelineComputedAt: DateTime.now(),
+          ),
+        );
         return;
       }
 
@@ -469,11 +503,166 @@ class EventsCubit extends Cubit<EventsState> {
           state.copyWith(
             isEventsLoading: false,
             events: events,
+            timelineItems: _buildTimelineItems(events, DateTime.now()),
+            timelineComputedAt: DateTime.now(),
             status: EventsStatus.success,
           ),
         ),
       );
     });
+  }
+
+  List<TimelineItemModel> _buildTimelineItems(
+    List<EventEntity> events,
+    DateTime now,
+  ) {
+    final sortedEvents = List<EventEntity>.from(events)
+      ..sort((a, b) => a.eventTime.compareTo(b.eventTime));
+
+    return sortedEvents
+        .map((event) => _resolveTimelineItem(event: event, now: now))
+        .toList();
+  }
+
+  TimelineItemModel _resolveTimelineItem({
+    required EventEntity event,
+    required DateTime now,
+  }) {
+    final normalizedStatus = event.status.trim().toUpperCase();
+    final backendResolved = _timelineForKnownBackendStatus(
+      event: event,
+      now: now,
+      normalizedStatus: normalizedStatus,
+    );
+
+    if (backendResolved != null) return backendResolved;
+
+    final start = event.eventTime;
+    final end = event.endTime ?? start.add(_timelineFallbackDuration);
+
+    if (now.isAfter(end) || now.isAtSameMomentAs(end)) {
+      final sinceEnded = now.difference(end);
+      final relativeLabel =
+          sinceEnded.inMinutes < 1
+              ? 'Ended just now'
+              : 'Ended ${_formatDurationCompact(sinceEnded)} ago';
+
+      return TimelineItemModel(
+        event: event,
+        phase: TimelinePhase.ended,
+        chipLabel: 'ENDED',
+        shortLabel: 'ENDED',
+        relativeLabel: relativeLabel,
+      );
+    }
+
+    if (now.isAfter(start) || now.isAtSameMomentAs(start)) {
+      final remaining = end.difference(now);
+      final relativeLabel =
+          remaining.inMinutes < 1
+              ? 'Live now • ending soon'
+              : 'Live now • ends in ${_formatDurationCompact(remaining)}';
+
+      return TimelineItemModel(
+        event: event,
+        phase: TimelinePhase.live,
+        chipLabel: 'LIVE',
+        shortLabel: 'LIVE',
+        relativeLabel: relativeLabel,
+      );
+    }
+
+    final untilStart = start.difference(now);
+    final isSoon = untilStart <= _timelineSoonThreshold;
+
+    return TimelineItemModel(
+      event: event,
+      phase: isSoon ? TimelinePhase.upcomingSoon : TimelinePhase.upcoming,
+      chipLabel: isSoon ? 'STARTING SOON' : 'UPCOMING',
+      shortLabel: isSoon ? 'SOON' : 'UPCOMING',
+      relativeLabel: 'Starts in ${_formatDurationCompact(untilStart)}',
+    );
+  }
+
+  TimelineItemModel? _timelineForKnownBackendStatus({
+    required EventEntity event,
+    required DateTime now,
+    required String normalizedStatus,
+  }) {
+    switch (normalizedStatus) {
+      case 'COMPLETED':
+        final end =
+            event.endTime ?? event.eventTime.add(_timelineFallbackDuration);
+        final sinceEnded = now.difference(end);
+        final relativeLabel =
+            sinceEnded.inMinutes <= 0
+                ? 'Ended'
+                : 'Ended ${_formatDurationCompact(sinceEnded)} ago';
+
+        return TimelineItemModel(
+          event: event,
+          phase: TimelinePhase.ended,
+          chipLabel: 'ENDED',
+          shortLabel: 'ENDED',
+          relativeLabel: relativeLabel,
+        );
+
+      case 'LIVE':
+        final end =
+            event.endTime ?? event.eventTime.add(_timelineFallbackDuration);
+        final remaining = end.difference(now);
+        final relativeLabel =
+            remaining.inMinutes <= 0
+                ? 'Live • scheduled end passed'
+                : 'Live now • ends in ${_formatDurationCompact(remaining)}';
+
+        return TimelineItemModel(
+          event: event,
+          phase: TimelinePhase.live,
+          chipLabel: 'LIVE',
+          shortLabel: 'LIVE',
+          relativeLabel: relativeLabel,
+        );
+
+      case 'UPCOMING':
+        final untilStart = event.eventTime.difference(now);
+        final isSoon =
+            untilStart <= _timelineSoonThreshold &&
+            (untilStart.inMinutes >= 0 || untilStart.inSeconds >= 0);
+
+        final relativeLabel =
+            untilStart.inSeconds < 0
+                ? 'Upcoming • start time reached'
+                : 'Starts in ${_formatDurationCompact(untilStart)}';
+
+        return TimelineItemModel(
+          event: event,
+          phase: isSoon ? TimelinePhase.upcomingSoon : TimelinePhase.upcoming,
+          chipLabel: isSoon ? 'STARTING SOON' : 'UPCOMING',
+          shortLabel: isSoon ? 'SOON' : 'UPCOMING',
+          relativeLabel: relativeLabel,
+        );
+
+      default:
+        return null;
+    }
+  }
+
+  String _formatDurationCompact(Duration duration) {
+    if (duration.inMinutes < 1) return '<1m';
+
+    final totalMinutes = duration.inMinutes;
+    final days = totalMinutes ~/ (24 * 60);
+    final hours = (totalMinutes % (24 * 60)) ~/ 60;
+    final minutes = totalMinutes % 60;
+
+    if (days > 0) {
+      return hours > 0 ? '${days}d ${hours}h' : '${days}d';
+    }
+    if (hours > 0) {
+      return minutes > 0 ? '${hours}h ${minutes}m' : '${hours}h';
+    }
+    return '${minutes}m';
   }
 
   // ===========================================================================

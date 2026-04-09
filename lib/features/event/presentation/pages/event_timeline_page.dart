@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:effulgence26_mobile_app/core/services/remote_config_service.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_colors.dart';
 import 'package:effulgence26_mobile_app/core/theme/app_spacing.dart';
@@ -17,13 +19,91 @@ class EventTimelinePage extends StatefulWidget {
   State<EventTimelinePage> createState() => _EventTimelinePageState();
 }
 
-class _EventTimelinePageState extends State<EventTimelinePage> {
+class _EventTimelinePageState extends State<EventTimelinePage>
+    with WidgetsBindingObserver {
+  final ScrollController _scrollController = ScrollController();
+  final Map<String, GlobalKey> _eventItemKeys = {};
+
+  Timer? _timelineTicker;
+  String? _lastAutoFocusedEventId;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
     // Load events if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EventsCubit>().loadEvents();
+      context.read<EventsCubit>().refreshTimelineItems();
+    });
+
+    _startTimelineTicker();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopTimelineTicker();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _startTimelineTicker();
+        context.read<EventsCubit>().refreshTimelineItems();
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        _stopTimelineTicker();
+        break;
+    }
+  }
+
+  void _startTimelineTicker() {
+    _timelineTicker ??= Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      context.read<EventsCubit>().refreshTimelineItems();
+    });
+  }
+
+  void _stopTimelineTicker() {
+    _timelineTicker?.cancel();
+    _timelineTicker = null;
+  }
+
+  void _autoFocusNextEvent(EventsState state) {
+    final nextIndex = state.timelineItems.indexWhere(
+      (item) =>
+          item.phase == TimelinePhase.live ||
+          item.phase == TimelinePhase.upcomingSoon ||
+          item.phase == TimelinePhase.upcoming,
+    );
+
+    if (nextIndex == -1) return;
+
+    final nextEventId = state.timelineItems[nextIndex].event.id;
+    if (_lastAutoFocusedEventId == nextEventId) return;
+
+    _lastAutoFocusedEventId = nextEventId;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final targetContext = _eventItemKeys[nextEventId]?.currentContext;
+      if (targetContext == null) return;
+
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+        alignment: 0.15,
+      );
     });
   }
 
@@ -32,44 +112,133 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: ParticleBackground(
-        floatingElements: EffulgenceBackgroundElements.getElementsForDay(context.read<RemoteConfigService>().techfestDay),
+        floatingElements: EffulgenceBackgroundElements.getElementsForDay(
+          context.read<RemoteConfigService>().techfestDay,
+        ),
         child: SafeArea(
           child: Column(
             children: [
               _buildHeader(),
               Expanded(
-                child: BlocBuilder<EventsCubit, EventsState>(
+                child: BlocConsumer<EventsCubit, EventsState>(
+                  listenWhen:
+                      (previous, current) =>
+                          previous.timelineItems != current.timelineItems,
+                  listener: (context, state) {
+                    if (state.timelineItems.isNotEmpty) {
+                      _autoFocusNextEvent(state);
+                    }
+                  },
                   builder: (context, state) {
                     if (state.isEventsLoading) {
                       return const Center(child: CircularProgressIndicator());
                     }
 
                     if (state.errorMessage != null) {
-                      return Center(child: Text(state.errorMessage!));
-                    }
-
-                    if (state.events.isEmpty) {
                       return Center(
-                        child: Text(
-                          "No events scheduled yet.",
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.textMuted),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                state.errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  context.read<EventsCubit>().loadEvents(
+                                    refresh: true,
+                                  );
+                                },
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Retry'),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }
 
-                    // Sort events by time
-                    final events = List.of(state.events)
-                      ..sort((a, b) => a.eventTime.compareTo(b.eventTime));
+                    if (state.timelineItems.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "No events scheduled yet.",
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      );
+                    }
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      itemCount: events.length,
-                      itemBuilder: (context, index) {
-                        final EventEntity event = events[index];
-                        final isLast = index == events.length - 1;
-                        return _buildTimelineItem(event, isLast, index);
-                      },
+                    final liveCount =
+                        state.timelineItems
+                            .where((item) => item.phase == TimelinePhase.live)
+                            .length;
+                    final upcomingCount =
+                        state.timelineItems
+                            .where(
+                              (item) =>
+                                  item.phase == TimelinePhase.upcoming ||
+                                  item.phase == TimelinePhase.upcomingSoon,
+                            )
+                            .length;
+                    final endedCount =
+                        state.timelineItems
+                            .where((item) => item.phase == TimelinePhase.ended)
+                            .length;
+
+                    final nextEventIndex = state.timelineItems.indexWhere(
+                      (item) =>
+                          item.phase == TimelinePhase.live ||
+                          item.phase == TimelinePhase.upcomingSoon ||
+                          item.phase == TimelinePhase.upcoming,
+                    );
+                    final nextEvent =
+                        nextEventIndex != -1
+                            ? state.timelineItems[nextEventIndex].event
+                            : null;
+                    final nextEventStatus =
+                        nextEventIndex != -1
+                            ? state.timelineItems[nextEventIndex]
+                            : null;
+
+                    return Column(
+                      children: [
+                        _buildTimelineInsights(
+                          liveCount: liveCount,
+                          upcomingCount: upcomingCount,
+                          endedCount: endedCount,
+                          nextEvent: nextEvent,
+                          nextEventStatus: nextEventStatus,
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(AppSpacing.lg),
+                            itemCount: state.timelineItems.length,
+                            itemBuilder: (context, index) {
+                              final item = state.timelineItems[index];
+                              final isLast =
+                                  index == state.timelineItems.length - 1;
+                              final eventId = item.event.id;
+                              final key = _eventItemKeys.putIfAbsent(
+                                eventId,
+                                () => GlobalKey(),
+                              );
+
+                              return KeyedSubtree(
+                                key: key,
+                                child: _buildTimelineItem(item, isLast, index),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -137,7 +306,106 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
     );
   }
 
-  Widget _buildTimelineItem(EventEntity event, bool isLast, int index) {
+  Widget _buildTimelineInsights({
+    required int liveCount,
+    required int upcomingCount,
+    required int endedCount,
+    required EventEntity? nextEvent,
+    required TimelineItemModel? nextEventStatus,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.lg,
+        0,
+      ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.bgSecondary.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.borderLight.withValues(alpha: 0.5),
+          ),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildStatChip(
+                  icon: Icons.bolt_rounded,
+                  label: '$liveCount Live',
+                  color: AppColors.eventLive,
+                ),
+                _buildStatChip(
+                  icon: Icons.schedule_rounded,
+                  label: '$upcomingCount Upcoming',
+                  color: AppColors.warning,
+                ),
+                _buildStatChip(
+                  icon: Icons.task_alt_rounded,
+                  label: '$endedCount Ended',
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ),
+            if (nextEvent != null && nextEventStatus != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Next: ${nextEvent.title} • ${nextEventStatus.relativeLabel}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(40),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(TimelineItemModel item, bool isLast, int index) {
+    final event = item.event;
+    final statusColor = _statusColor(item.phase);
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +427,17 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                 Text(
                   event.eventTime.formattedTime,
                   style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.primary,
+                    color: statusColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.shortLabel,
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: statusColor.withValues(alpha: 0.9),
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -167,7 +445,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
             ),
           ),
           const SizedBox(width: AppSpacing.md),
-          
+
           // Timeline Line & Dot
           Column(
             children: [
@@ -177,13 +455,10 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.bgPrimary,
-                  border: Border.all(
-                    color: AppColors.primary,
-                    width: 2,
-                  ),
+                  border: Border.all(color: statusColor, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.5),
+                      color: statusColor.withValues(alpha: 0.5),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -199,8 +474,8 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppColors.primary,
-                          AppColors.primary.withValues(alpha: 0.1),
+                          statusColor,
+                          statusColor.withValues(alpha: 0.1),
                         ],
                       ),
                     ),
@@ -219,12 +494,18 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                   color: AppColors.surface.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: statusColor.withValues(alpha: 0.35),
                   ),
                   boxShadow: [
                     BoxShadow(
+                      color: statusColor.withValues(alpha: 0.16),
+                      blurRadius: 14,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 6),
+                    ),
+                    BoxShadow(
                       color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 10,
+                      blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
                   ],
@@ -254,6 +535,7 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                               spacing: 8,
                               runSpacing: 6,
                               children: [
+                                _buildStatusTag(item),
                                 _buildTag(event.eventType, AppColors.secondary),
                                 _buildTag(event.domain, AppColors.accent),
                               ],
@@ -286,6 +568,30 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
                                   ),
                                 ),
                               ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: statusColor.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Text(
+                                item.relativeLabel,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
                             if (event.endTime != null) ...[
                               const SizedBox(height: 4),
@@ -324,15 +630,69 @@ class _EventTimelinePageState extends State<EventTimelinePage> {
     );
   }
 
+  Widget _buildStatusTag(TimelineItemModel item) {
+    final color = _statusColor(item.phase);
+    final icon = _statusIcon(item.phase);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            item.chipLabel,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _statusColor(TimelinePhase phase) {
+    switch (phase) {
+      case TimelinePhase.live:
+        return AppColors.eventLive;
+      case TimelinePhase.upcomingSoon:
+        return AppColors.warning;
+      case TimelinePhase.upcoming:
+        return AppColors.eventUpcoming;
+      case TimelinePhase.ended:
+        return AppColors.eventCompleted;
+    }
+  }
+
+  IconData _statusIcon(TimelinePhase phase) {
+    switch (phase) {
+      case TimelinePhase.live:
+        return Icons.bolt_rounded;
+      case TimelinePhase.upcomingSoon:
+        return Icons.notifications_active_rounded;
+      case TimelinePhase.upcoming:
+        return Icons.schedule_rounded;
+      case TimelinePhase.ended:
+        return Icons.check_circle_outline_rounded;
+    }
+  }
+
   Widget _buildTag(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 140),

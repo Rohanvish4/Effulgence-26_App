@@ -4,14 +4,34 @@ import '../../domain/entities/public_team_entity.dart';
 
 enum EventsStatus { initial, loading, success, failure }
 
+enum TimelinePhase { upcoming, upcomingSoon, live, ended }
+
+class TimelineItemModel {
+  final EventEntity event;
+  final TimelinePhase phase;
+  final String chipLabel;
+  final String shortLabel;
+  final String relativeLabel;
+
+  const TimelineItemModel({
+    required this.event,
+    required this.phase,
+    required this.chipLabel,
+    required this.shortLabel,
+    required this.relativeLabel,
+  });
+}
+
 class EventsState {
   final EventsStatus status;
   final List<EventEntity> events;
+  final List<TimelineItemModel> timelineItems;
   final List<ParticipationEntity> myParticipations;
   final List<PublicTeamEntity> publicTeams;
   final EventEntity? selectedEvent;
   final String? errorMessage;
   final String? successMessage;
+  final DateTime? timelineComputedAt;
 
   // Team Management State
   final ParticipationEntity? myTeam;
@@ -29,11 +49,13 @@ class EventsState {
   const EventsState({
     this.status = EventsStatus.initial,
     this.events = const [],
+    this.timelineItems = const [],
     this.myParticipations = const [],
     this.publicTeams = const [],
     this.selectedEvent,
     this.errorMessage,
     this.successMessage,
+    this.timelineComputedAt,
     this.myTeam,
     this.teamInvitations = const [],
     this.teamJoinRequests = const [],
@@ -48,11 +70,13 @@ class EventsState {
   EventsState copyWith({
     EventsStatus? status,
     List<EventEntity>? events,
+    List<TimelineItemModel>? timelineItems,
     List<ParticipationEntity>? myParticipations,
     List<PublicTeamEntity>? publicTeams,
     EventEntity? selectedEvent,
     String? errorMessage,
     String? successMessage,
+    DateTime? timelineComputedAt,
     bool? isEventsLoading,
     bool? isDetailsLoading,
     bool? isParticipationsLoading,
@@ -67,11 +91,13 @@ class EventsState {
     return EventsState(
       status: status ?? this.status,
       events: events ?? this.events,
+      timelineItems: timelineItems ?? this.timelineItems,
       myParticipations: myParticipations ?? this.myParticipations,
       publicTeams: publicTeams ?? this.publicTeams,
       selectedEvent: selectedEvent ?? this.selectedEvent,
       errorMessage: errorMessage,
       successMessage: successMessage,
+      timelineComputedAt: timelineComputedAt ?? this.timelineComputedAt,
       isEventsLoading: isEventsLoading ?? this.isEventsLoading,
       isDetailsLoading: isDetailsLoading ?? this.isDetailsLoading,
       isParticipationsLoading:
