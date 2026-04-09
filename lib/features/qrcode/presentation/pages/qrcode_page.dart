@@ -138,7 +138,7 @@ class _QrCodePageState extends State<QrCodePage> {
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
-            "Show this QR code at the event entrance",
+            "You will be required to show this QR code for entry to DJ Night and Band Night.",
             style: AppTextStyles.bodySmall.copyWith(
               color: AppColors.textSecondary,
             ),

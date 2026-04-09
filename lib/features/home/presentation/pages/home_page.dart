@@ -21,7 +21,6 @@ import '../../../../../components/components.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_cubit.dart';
 import 'package:effulgence26_mobile_app/features/notifications/presentation/cubit/notification_state.dart';
-import 'package:effulgence26_mobile_app/features/home/presentation/widgets/countdown_timer_widget.dart';
 import 'package:effulgence26_mobile_app/features/home/presentation/widgets/faq_widget.dart';
 
 
@@ -254,6 +253,7 @@ class _HomePageState extends State<HomePage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                     const SizedBox(height: 50),
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       decoration: BoxDecoration(
@@ -309,8 +309,9 @@ class _HomePageState extends State<HomePage>
                       ],
                     ),
 
-                    const SizedBox(height: AppSpacing.md),
-                    const CountdownTimerWidget(),
+                    // const SizedBox(height: AppSpacing.md),
+                    // const CountdownTimerWidget(),
+                     const SizedBox(height: 50),
                   ],
                 ),
               ),
@@ -1068,7 +1069,7 @@ class _HomePageState extends State<HomePage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Your Event Pass',
+                        'Show Entry QR Code',
                         style: AppTextStyles.titleMedium.copyWith(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
