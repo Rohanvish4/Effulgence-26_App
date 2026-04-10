@@ -8,6 +8,7 @@ import '../../domain/entities/participation_entity.dart';
 import '../cubit/events_cubit.dart';
 import '../cubit/events_state.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/widgets/auth_support_section.dart';
 import 'package:share_plus/share_plus.dart';
 
 class TeamManagementPage extends StatefulWidget {
@@ -144,6 +145,41 @@ class _TeamManagementPageState extends State<TeamManagementPage> {
                       isFullWidth: true,
                       onPressed: () => _confirmLeaveTeam(context, team.id),
                     ),
+
+                  const SizedBox(height: AppSpacing.lg),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Need help?',
+                          style: AppTextStyles.titleSmall.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'If you are facing any error or confusion regarding the mobile app or website, you can contact the technical team below.',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        const AuthSupportSection(),
+                      ],
+                    ),
+                  ),
                   
                   const SizedBox(height: 50),
                 ],

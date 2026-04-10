@@ -625,15 +625,48 @@ class EventsCubit extends Cubit<EventsState> {
         );
 
       case 'UPCOMING':
-        final untilStart = event.eventTime.difference(now);
+        final start = event.eventTime;
+        final end = event.endTime ?? start.add(_timelineFallbackDuration);
+
+        if (now.isAfter(end) || now.isAtSameMomentAs(end)) {
+          final sinceEnded = now.difference(end);
+          final relativeLabel =
+              sinceEnded.inMinutes <= 0
+                  ? 'Ended'
+                  : 'Ended ${_formatDurationCompact(sinceEnded)} ago';
+
+          return TimelineItemModel(
+            event: event,
+            phase: TimelinePhase.ended,
+            chipLabel: 'ENDED',
+            shortLabel: 'ENDED',
+            relativeLabel: relativeLabel,
+          );
+        }
+
+        if (now.isAfter(start) || now.isAtSameMomentAs(start)) {
+          final remaining = end.difference(now);
+          final relativeLabel =
+              remaining.inMinutes <= 0
+                  ? 'Live • scheduled end passed'
+                  : 'Live now • ends in ${_formatDurationCompact(remaining)}';
+
+          return TimelineItemModel(
+            event: event,
+            phase: TimelinePhase.live,
+            chipLabel: 'LIVE',
+            shortLabel: 'LIVE',
+            relativeLabel: relativeLabel,
+          );
+        }
+
+        final untilStart = start.difference(now);
         final isSoon =
             untilStart <= _timelineSoonThreshold &&
             (untilStart.inMinutes >= 0 || untilStart.inSeconds >= 0);
 
         final relativeLabel =
-            untilStart.inSeconds < 0
-                ? 'Upcoming • start time reached'
-                : 'Starts in ${_formatDurationCompact(untilStart)}';
+            'Starts in ${_formatDurationCompact(untilStart)}';
 
         return TimelineItemModel(
           event: event,
