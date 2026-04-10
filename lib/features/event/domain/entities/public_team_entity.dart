@@ -34,11 +34,18 @@ class TeamMemberEntity {
 
   // Helper to get display initials
   String get initials {
-    if (name.isEmpty) return '??';
-    final parts = name.split(' ');
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return '??';
+
+    final parts = trimmedName.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '??';
+
     if (parts.length > 1) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name.substring(0, 2 >= name.length ? name.length : 2).toUpperCase();
+
+    final singlePart = parts.first;
+    final length = singlePart.length >= 2 ? 2 : 1;
+    return singlePart.substring(0, length).toUpperCase();
   }
 }
