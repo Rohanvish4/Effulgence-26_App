@@ -11,6 +11,7 @@ import 'package:effulgence26_mobile_app/features/event/presentation/pages/admin_
 import 'package:effulgence26_mobile_app/features/event/presentation/pages/events_list_page.dart';
 import 'package:effulgence26_mobile_app/features/profile/presentation/pages/user_profile_page.dart';
 import 'package:effulgence26_mobile_app/features/sponsors/presentation/pages/sponsors_list_page.dart';
+import '../../../../../core/constants/app_env.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/theme/app_text_styles.dart';
 import 'accommodation_reminder_dialog.dart';
@@ -246,10 +247,17 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
       return Scaffold(
         extendBody: true,              // ← Critical
         backgroundColor: Colors.transparent, // ← Don't let scaffold paint bg
-        body: PageView(
-          controller: _pageController,
-          physics: const BouncingScrollPhysics(),
-          children: pages,
+        body: Column(
+          children: [
+            if (AppEnv.isDemoMode) _buildDemoBanner(),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const BouncingScrollPhysics(),
+                children: pages,
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: _buildFloatingNavBar(
           isAdmin: isAdmin,
@@ -336,6 +344,24 @@ class HometabState extends State<Hometab> with SingleTickerProviderStateMixin {
     ),
   );
 }
+
+  Widget _buildDemoBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.amber.shade800,
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: const Text(
+        'DEMO MODE · Backend Offline',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
 
   Widget _buildNavItem(
     int index,

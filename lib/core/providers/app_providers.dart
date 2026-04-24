@@ -9,6 +9,8 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io' as io;
 
+import '../constants/app_env.dart';
+import '../demo/demo_data.dart';
 import '../services/analytics_service.dart';
 
 import '../network/api_client.dart';
@@ -17,14 +19,17 @@ import '../services/notification_service.dart';
 
 import '../../features/auth/data/datasources/auth_local_datasource.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
+import '../../features/auth/data/datasources/auth_demo_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 
 import '../../features/event/data/datasources/events_remote_datasource.dart';
+import '../../features/event/data/datasources/events_demo_datasource.dart';
 import '../../features/event/data/repositories/events_repository_impl.dart';
 import '../../features/event/presentation/cubit/events_cubit.dart';
 
 import '../../features/profile/data/datasources/user_profile_remote_datasource.dart';
+import '../../features/profile/data/datasources/user_profile_demo_datasource.dart';
 import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
 
@@ -33,14 +38,18 @@ import '../../features/sponsors/data/repositories/sponsor_repository_impl.dart';
 import '../../features/sponsors/presentation/cubit/sponsors_cubit.dart';
 
 import '../../features/qrcode/data/datasources/qrcode_remote_datasource.dart';
+import '../../features/qrcode/data/datasources/qrcode_demo_datasource.dart';
 import '../../features/qrcode/data/repositories/qrcode_repository_impl.dart';
 import '../../features/qrcode/presentation/cubit/qrcode_cubit.dart';
 import '../../features/qrcode/presentation/cubit/qr_verification_cubit.dart';
 
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
+import '../../features/notifications/data/repositories/notification_demo_repository.dart';
+import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 
 import '../../features/admin/data/datasources/admin_remote_datasource.dart';
+import '../../features/admin/data/datasources/admin_demo_datasource.dart';
 import '../../features/admin/data/repositories/admin_repository_impl.dart';
 import '../../features/admin/domain/repositories/admin_repository.dart';
 import '../../features/admin/presentation/cubit/admin_cubit.dart';
@@ -86,13 +95,20 @@ class AppProviders {
       debugPrint('Failed to initialize Notification Service: $e');
     });
 
+    final isDemoMode = AppEnv.isDemoMode;
+    if (isDemoMode) {
+      debugPrint('DEMO MODE ENABLED — all API calls use mock data');
+    }
+
     // =========================================================================
     // NOTIFICATION FEATURE DEPENDENCY INJECTION
     // =========================================================================
-    final notificationRepository = NotificationRepositoryImpl(
-      apiClient: apiClient,
-      networkInfo: networkInfo,
-    );
+    final notificationRepository = isDemoMode
+        ? NotificationDemoRepository()
+        : NotificationRepositoryImpl(
+            apiClient: apiClient,
+            networkInfo: networkInfo,
+          );
     final notificationCubit = NotificationCubit(repository: notificationRepository);
 
     // =========================================================================
@@ -105,7 +121,9 @@ class AppProviders {
       secureStorage: flutterSecureStorage,
     );
 
-    final authRemoteDataSource = AuthRemoteDataSourceImpl(apiClient: apiClient);
+    final AuthRemoteDataSource authRemoteDataSource = isDemoMode
+        ? AuthDemoDataSource()
+        : AuthRemoteDataSourceImpl(apiClient: apiClient);
 
     // DATA LAYER: Repository Implementation (coordinates data sources)
     final authRepository = AuthRepositoryImpl(
@@ -113,6 +131,12 @@ class AppProviders {
       localDataSource: authLocalDataSource,
       networkInfo: networkInfo,
     );
+
+    // In demo mode pre-seed the local cache so checkAuthStatus() finds a user
+    // and skips the login screen without any network calls.
+    if (isDemoMode) {
+      await authLocalDataSource.saveUser(DemoData.demoUser);
+    }
 
     // PRESENTATION LAYER: Cubit (state management)
     final authCubit = AuthCubit(
@@ -127,20 +151,23 @@ class AppProviders {
     await authCubit.checkAuthStatus();
 
     // Listen for session expiration events (401/403) from ApiClient
-    // and trigger logout when they occur
-    apiClient.sessionExpiredStream.listen((_) {
-      authCubit.logout();
-    });
+    // and trigger logout when they occur (no-op in demo mode since no real API)
+    if (!isDemoMode) {
+      apiClient.sessionExpiredStream.listen((_) {
+        authCubit.logout();
+      });
+    }
 
     // =========================================================================
     // EVENTS FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
-    // DATA LAYER: Remote Data Source (API calls for events)
-    final eventsRemoteDataSource = EventsRemoteDataSourceImpl(
-      apiClient: apiClient,
-      authLocalDataSource: authLocalDataSource,
-    );
+    final EventsRemoteDataSource eventsRemoteDataSource = isDemoMode
+        ? EventsDemoDataSource()
+        : EventsRemoteDataSourceImpl(
+            apiClient: apiClient,
+            authLocalDataSource: authLocalDataSource,
+          );
 
     // DATA LAYER: Repository Implementation (coordinates data sources)
     final eventsRepository = EventsRepositoryImpl(
@@ -155,10 +182,9 @@ class AppProviders {
     // PROFILE FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
-    // DATA LAYER: Remote Data Source
-    final profileRemoteDataSource = ProfileRemoteDataSourceImpl(
-      apiClient: apiClient,
-    );
+    final ProfileRemoteDataSource profileRemoteDataSource = isDemoMode
+        ? ProfileDemoDataSource()
+        : ProfileRemoteDataSourceImpl(apiClient: apiClient);
 
     // DATA LAYER: Repository Implementation
     final profileRepository = UserProfileRepositoryImpl(
@@ -166,13 +192,11 @@ class AppProviders {
       networkInfo: networkInfo,
     );
 
-    // PRESENTATION LAYER: Cubit
-
     // =========================================================================
     // SPONSORS FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
-    // DATA LAYER: Local Data Source (mock data)
+    // DATA LAYER: Local Data Source (already uses local mock data — no change needed)
     final sponsorLocalDataSource = SponsorLocalDataSource();
 
     // DATA LAYER: Repository Implementation
@@ -187,10 +211,9 @@ class AppProviders {
     // QR CODE FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
-    // DATA LAYER: Remote Data Source
-    final qrCodeRemoteDataSource = QrCodeRemoteDataSourceImpl(
-      apiClient: apiClient,
-    );
+    final QrCodeRemoteDataSource qrCodeRemoteDataSource = isDemoMode
+        ? QrCodeDemoDataSource()
+        : QrCodeRemoteDataSourceImpl(apiClient: apiClient);
 
     // DATA LAYER: Repository Implementation
     final qrCodeRepository = QrCodeRepositoryImpl(
@@ -207,12 +230,13 @@ class AppProviders {
     // FlutterError.onError and PlatformDispatcher.instance.onError are
     // already configured in main.dart before runApp() for full coverage.
 
-
     // =========================================================================
     // ADMIN FEATURE DEPENDENCY INJECTION
     // =========================================================================
 
-    final adminRemoteDataSource = AdminRemoteDataSourceImpl(apiClient: apiClient);
+    final AdminRemoteDataSource adminRemoteDataSource = isDemoMode
+        ? AdminDemoDataSource()
+        : AdminRemoteDataSourceImpl(apiClient: apiClient);
     final adminRepository = AdminRepositoryImpl(
       remoteDataSource: adminRemoteDataSource,
       networkInfo: networkInfo,
@@ -232,7 +256,7 @@ class AppProviders {
       // Provider<EventsRepositoryImpl>.value(value: eventsRepository),
       Provider<UserProfileRepositoryImpl>.value(value: profileRepository),
       Provider<NotificationService>.value(value: notificationService),
-      Provider<NotificationRepositoryImpl>.value(value: notificationRepository),
+      Provider<NotificationRepository>.value(value: notificationRepository),
       Provider<ApiClient>.value(value: apiClient),
       Provider<AnalyticsService>.value(value: AnalyticsService.instance),
 

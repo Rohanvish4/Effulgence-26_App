@@ -36,6 +36,14 @@ class AppEnv {
   static bool get isProd => environment == 'prod';
 
   // ---------------------------------------------------------------------------
+  // Demo Mode
+  // ---------------------------------------------------------------------------
+
+  /// When true, all API calls are replaced with static mock data so the app
+  /// works without a running backend (e.g. post-event Play Store showcase).
+  static bool get isDemoMode => dotenv.env['DEMO_MODE'] == 'true';
+
+  // ---------------------------------------------------------------------------
   // API Configuration
   // ---------------------------------------------------------------------------
 

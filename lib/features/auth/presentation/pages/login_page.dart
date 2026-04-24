@@ -251,6 +251,61 @@ class _LoginPageState extends State<LoginPage> {
                               },
                               isLoading: state is AuthLoading && _isGoogleLogin,
                             ),
+
+                            if (AppEnv.isDemoMode) ...[
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  Expanded(child: Divider(color: AppColors.borderLight)),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                                    child: Text(
+                                      'OR',
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(child: Divider(color: AppColors.borderLight)),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              OutlinedButton.icon(
+                                onPressed: state is AuthLoading
+                                    ? null
+                                    : () {
+                                        setState(() => _isGoogleLogin = false);
+                                        context.read<AuthCubit>().login(
+                                          email: 'demo@effulgence26.in',
+                                          password: 'demo',
+                                        );
+                                      },
+                                icon: const Icon(
+                                  Icons.explore_rounded,
+                                  color: Colors.amber,
+                                  size: 20,
+                                ),
+                                label: Text(
+                                  'Explore Demo Tour',
+                                  style: AppTextStyles.labelMedium.copyWith(
+                                    color: Colors.amber,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(
+                                    color: Colors.amber,
+                                    width: 1.2,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.sm,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
