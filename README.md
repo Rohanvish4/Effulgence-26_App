@@ -37,7 +37,6 @@ lib/
 2. **Domain Layer**: Business logic, Entities, without  Use Cases for simplicity
 3. **Data Layer**: Repositories, Data Sources (Remote/Local)
 
-**📖 Want to add a new feature?** Check out: [FEATURE_DEVELOPMENT_GUIDE.md](FEATURE_DEVELOPMENT_GUIDE.md)
 
 
 ##  Getting Started
@@ -154,12 +153,6 @@ This is a private project for Effulgence'26. For contributions:
 3. Run `flutter analyze` and `flutter test`
 4. Submit a pull request
 
-##  Development Team
-
-- **Developer**: Team PTSC KNIT
-- **Organization**: KNIT (Kamla Nehru Institute of Technology), Sultanpur
-- **Event**: Effulgence'26
-
 ##  License
 
 This project is proprietary software for Effulgence'26.
@@ -168,7 +161,7 @@ This project is proprietary software for Effulgence'26.
 
 For issues or questions:
 - Create an issue in the repository
-- Contact: programming.club@knit.ac.in or rohannic111@gmail.com
+- Contact: rohannic111@gmail.com
 
 ---
 
